@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button'
 import Header from '@/components/header'
 import Link from 'next/link'
 
+export const dynamic = 'force-dynamic'
+
 const CREDIT_PACKAGES = [
   {
     id: 'starter',
