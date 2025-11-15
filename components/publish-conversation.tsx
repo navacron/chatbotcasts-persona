@@ -16,19 +16,55 @@ export default function PublishConversation({ conversationData }: PublishConvers
   const [isSignedIn, setIsSignedIn] = useState(false)
   const [showSignIn, setShowSignIn] = useState(false)
   const [published, setPublished] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [publishedConversation, setPublishedConversation] = useState<any>(null)
 
-  const handlePublish = () => {
+  const handlePublish = async () => {
     if (!isSignedIn) {
       setShowSignIn(true)
       return
     }
 
-    if (title.trim()) {
+    if (!title.trim()) {
+      setError('Please enter a conversation title')
+      return
+    }
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const response = await fetch('/api/conversations/publish', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title,
+          description,
+          topic: conversationData?.topic || 'Untitled Topic',
+          data: conversationData, // Store entire conversation data as JSON
+          isPublic,
+        }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to publish conversation')
+      }
+
+      const { conversation } = await response.json()
+      setPublishedConversation(conversation)
       setPublished(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred')
+    } finally {
+      setIsLoading(false)
     }
   }
 
-  if (published) {
+  if (published && publishedConversation) {
     return (
       <div className="bg-green-50 border border-green-200 rounded-lg p-8 text-center space-y-4">
         <CheckCircle2 className="h-16 w-16 text-green-600 mx-auto" />
@@ -101,6 +137,12 @@ export default function PublishConversation({ conversationData }: PublishConvers
       </div>
 
       <div className="space-y-6">
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p className="text-sm text-red-900">{error}</p>
+          </div>
+        )}
+
         {/* Title */}
         <div className="space-y-2">
           <label className="text-sm font-semibold text-foreground">
@@ -168,9 +210,10 @@ export default function PublishConversation({ conversationData }: PublishConvers
           </Button>
           <Button
             onClick={handlePublish}
+            disabled={isLoading}
             className="flex-1 bg-gradient-to-r from-primary to-accent hover:opacity-90"
           >
-            Publish Conversation
+            {isLoading ? 'Publishing...' : 'Publish Conversation'}
           </Button>
         </div>
       </div>
