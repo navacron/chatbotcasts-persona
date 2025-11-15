@@ -5,8 +5,7 @@ import { Button } from '@/components/ui/button'
 import ChatMessage from './chat-message'
 import PersonaSwitcher from './persona-switcher'
 import ConversationControls from './conversation-controls'
-import GuestProfileCreator from './guest-profile-creator'
-import { Send, RotateCcw, Share2 } from 'lucide-react'
+import { Send, Share2 } from 'lucide-react'
 
 const MOCK_CONVERSATION = [
   {
@@ -37,16 +36,19 @@ const MOCK_CONVERSATION = [
 
 interface ChatConversationProps {
   data: any
-  onPublish?: () => void
+  onPublish?: (publishData: any) => void // Updated signature to pass conversation data
 }
 
 export default function ChatConversation({ data, onPublish }: ChatConversationProps) {
+  const [personaDetails, setPersonaDetails] = useState<any>({})
+  const [isLoadingPersonas, setIsLoadingPersonas] = useState(true)
+  
   const [messages, setMessages] = useState<any[]>(() => {
     console.log("[v0] ChatConversation received data:", data)
     if (data?.messages && Array.isArray(data.messages)) {
       return data.messages
     }
-    return MOCK_CONVERSATION
+    return []
   })
 
   const [nextSpeaker, setNextSpeaker] = useState<string | null>(null)
@@ -54,23 +56,62 @@ export default function ChatConversation({ data, onPublish }: ChatConversationPr
   const [turnMode] = useState(data?.turnMode || 'manual')
   const [numTurns] = useState(data?.numTurns || 3)
   const [currentCycleIndex, setCurrentCycleIndex] = useState(0)
-  const [personas] = useState<string[]>(data?.personas || ['host', 'andrew-ng'])
+  const [personas] = useState<string[]>(data?.personas || [])
 
-  const persona_details: any = {
-    'andrew-ng': { name: 'Andrew Ng', avatar: '🤖', color: 'from-blue-500 to-blue-600' },
-    'elon-musk': { name: 'Elon Musk', avatar: '⚡', color: 'from-orange-500 to-red-600' },
-    'sam-altman': { name: 'Sam Altman', avatar: '🧠', color: 'from-purple-500 to-pink-600' },
-    'jane-goodall': { name: 'Jane Goodall', avatar: '🌍', color: 'from-green-500 to-emerald-600' },
-    'bill-gates': { name: 'Bill Gates', avatar: '💡', color: 'from-cyan-500 to-blue-600' },
-    'host': { name: 'ChatBotCast Host', avatar: '🎙️', color: 'from-slate-500 to-slate-600' },
-    ...(data?.guestProfile && {
-      [data.guestProfile.id]: {
-        name: data.guestProfile.name,
-        avatar: data.guestProfile.avatar,
-        color: data.guestProfile.color,
-        title: data.guestProfile.title,
-      },
-    }),
+  useEffect(() => {
+    const fetchPersonas = async () => {
+      try {
+        const response = await fetch('/api/personas')
+        const data = await response.json()
+        
+        const allPersonas = [
+          ...(data.publicPersonas || []),
+          ...(data.myPersonas || [])
+        ]
+        
+        const detailsMap: any = {}
+        allPersonas.forEach((persona: any) => {
+          detailsMap[persona.id] = {
+            id: persona.id,
+            name: persona.name,
+            avatar: getAvatarForPersona(persona.name),
+            color: getColorForPersona(persona.name),
+            title: persona.name,
+          }
+        })
+        
+        console.log("[v0] Loaded persona details:", detailsMap)
+        setPersonaDetails(detailsMap)
+      } catch (error) {
+        console.error("[v0] Error fetching personas:", error)
+      } finally {
+        setIsLoadingPersonas(false)
+      }
+    }
+    
+    fetchPersonas()
+  }, [])
+
+  const getAvatarForPersona = (name: string): string => {
+    const lowerName = name.toLowerCase()
+    if (lowerName.includes('andrew')) return '🤖'
+    if (lowerName.includes('elon')) return '⚡'
+    if (lowerName.includes('sam')) return '🧠'
+    if (lowerName.includes('jane')) return '🌍'
+    if (lowerName.includes('bill')) return '💡'
+    if (lowerName.includes('host')) return '🎙️'
+    return '👤'
+  }
+
+  const getColorForPersona = (name: string): string => {
+    const lowerName = name.toLowerCase()
+    if (lowerName.includes('andrew')) return 'from-blue-500 to-blue-600'
+    if (lowerName.includes('elon')) return 'from-orange-500 to-red-600'
+    if (lowerName.includes('sam')) return 'from-purple-500 to-pink-600'
+    if (lowerName.includes('jane')) return 'from-green-500 to-emerald-600'
+    if (lowerName.includes('bill')) return 'from-cyan-500 to-blue-600'
+    if (lowerName.includes('host')) return 'from-slate-500 to-slate-600'
+    return 'from-gray-500 to-gray-600'
   }
 
   const handleEditMessage = (messageId: number, newText: string) => {
@@ -93,39 +134,103 @@ export default function ChatConversation({ data, onPublish }: ChatConversationPr
     const speakerToUse = nextSpeaker || personas[0]
     setIsGenerating(true)
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+    try {
+      console.log('[v0] Generating response for persona:', speakerToUse)
+      console.log('[v0] All personas:', personas)
+      console.log('[v0] Chat history:', messages)
 
-    const personaDetail = persona_details[speakerToUse]
-    const newMessage = {
-      id: messages.length + 1,
-      persona: speakerToUse,
-      name: personaDetail.name,
-      message: `This is a simulated response from ${personaDetail.name}. In a real implementation, this would be generated by calling your AI backend.`,
-      timestamp: new Date(),
-    }
+      // Call the API to generate the next conversation message
+      const response = await fetch('/api/generateNextConversation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          currentPersonaId: speakerToUse,
+          allPersonaIds: personas,
+          chatHistory: messages.map(msg => ({
+            personaId: msg.persona,
+            message: msg.message,
+            timestamp: msg.timestamp
+          })),
+          topic: data?.topic || 'General Discussion'
+        }),
+      })
 
-    setMessages([...messages, newMessage])
-    setIsGenerating(false)
-    setNextSpeaker(null)
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('[v0] API error:', errorData)
+        throw new Error(errorData.error || 'Failed to generate response')
+      }
 
-    // Auto-advance for certain modes
-    if (turnMode === 'round-robin' || turnMode === 'alternating') {
-      const nextIndex = (currentCycleIndex + 1) % personas.length
-      setCurrentCycleIndex(nextIndex)
-      setNextSpeaker(personas[nextIndex])
+      const result = await response.json()
+      console.log('[v0] API response:', result)
+
+      const personaDetail = personaDetails[speakerToUse]
+      if (!personaDetail) {
+        console.error('[v0] No persona details found for:', speakerToUse)
+        setIsGenerating(false)
+        return
+      }
+
+      // Create new message from API response
+      const newMessage = {
+        id: messages.length + 1,
+        persona: speakerToUse,
+        name: personaDetail.name,
+        message: result.message,
+        timestamp: new Date(result.timestamp),
+      }
+
+      setMessages([...messages, newMessage])
+      setNextSpeaker(null)
+
+      // Handle turn mode logic
+      if (turnMode === 'round-robin' || turnMode === 'alternating') {
+        const nextIndex = (currentCycleIndex + 1) % personas.length
+        setCurrentCycleIndex(nextIndex)
+        setNextSpeaker(personas[nextIndex])
+      }
+    } catch (error) {
+      console.error('[v0] Error generating response:', error)
+      // Show error to user
+      alert('Failed to generate response. Please try again.')
+    } finally {
+      setIsGenerating(false)
     }
   }
 
   const handleReset = () => {
-    setMessages(MOCK_CONVERSATION)
+    setMessages([])
     setNextSpeaker(null)
     setCurrentCycleIndex(0)
   }
 
+  const handlePublishClick = () => {
+    if (onPublish) {
+      onPublish({
+        messages,
+        personas,
+        topic: data?.topic || 'New Conversation',
+        turnMode,
+        numTurns,
+      })
+    }
+  }
+
+  if (isLoadingPersonas) {
+    return (
+      <div className="max-w-4xl mx-auto flex items-center justify-center h-96">
+        <div className="text-center space-y-2">
+          <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-muted-foreground">Loading personas...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      {/* Header with Publish Button */}
       <div className="space-y-2">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1">
@@ -138,7 +243,7 @@ export default function ChatConversation({ data, onPublish }: ChatConversationPr
           </div>
           {onPublish && (
             <Button
-              onClick={onPublish}
+              onClick={handlePublishClick}
               className="bg-gradient-to-r from-accent to-orange-500 hover:opacity-90 whitespace-nowrap"
             >
               <Share2 className="h-4 w-4 mr-2" />
@@ -148,17 +253,23 @@ export default function ChatConversation({ data, onPublish }: ChatConversationPr
         </div>
       </div>
 
-      {/* Chat Area */}
       <div className="bg-white border border-border rounded-xl overflow-hidden flex flex-col h-96">
-        {/* Messages */}
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
           {messages.map((msg) => (
             <ChatMessage
               key={msg.id}
               message={msg}
-              personaDetails={persona_details[msg.persona]}
-              onEdit={handleEditMessage}
-              onDelete={handleDeleteMessage}
+              personaDetails={personaDetails[msg.persona] || { name: 'Unknown', avatar: '👤', color: 'from-gray-500 to-gray-600' }}
+              onEdit={(id, text) => {
+                setMessages(
+                  messages.map((m) =>
+                    m.id === id ? { ...m, message: text } : m
+                  )
+                )
+              }}
+              onDelete={(id) => {
+                setMessages(messages.filter((m) => m.id !== id))
+              }}
             />
           ))}
           {isGenerating && (
@@ -173,9 +284,13 @@ export default function ChatConversation({ data, onPublish }: ChatConversationPr
               </div>
             </div>
           )}
+          {messages.length === 0 && !isGenerating && (
+            <div className="flex items-center justify-center h-full text-muted-foreground">
+              <p>Start the conversation by generating the first response</p>
+            </div>
+          )}
         </div>
 
-        {/* Controls */}
         <div className="border-t border-border bg-background p-4 space-y-4">
           {turnMode === 'manual' && (
             <div className="space-y-2">
@@ -184,7 +299,7 @@ export default function ChatConversation({ data, onPublish }: ChatConversationPr
                 personas={personas}
                 selected={nextSpeaker}
                 onSelect={handleSelectSpeaker}
-                personaDetails={persona_details}
+                personaDetails={personaDetails}
               />
             </div>
           )}
@@ -200,14 +315,14 @@ export default function ChatConversation({ data, onPublish }: ChatConversationPr
         </div>
       </div>
 
-      {/* Participants & Controls */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Participants */}
         <div className="lg:col-span-2 bg-white border border-border rounded-xl p-6">
           <h3 className="text-lg font-semibold text-foreground mb-4">Participants</h3>
           <div className="space-y-2">
             {personas.map((personaId: string) => {
-              const detail = persona_details[personaId]
+              const detail = personaDetails[personaId]
+              if (!detail) return null
+              
               return (
                 <div
                   key={personaId}
@@ -225,16 +340,9 @@ export default function ChatConversation({ data, onPublish }: ChatConversationPr
                 </div>
               )
             })}
-            {data?.guestProfile && (
-              <GuestProfileCreator
-                guestProfile={data.guestProfile}
-                personaDetails={persona_details}
-              />
-            )}
           </div>
         </div>
 
-        {/* Conversation Info */}
         <div className="bg-white border border-border rounded-xl p-6">
           <h3 className="text-lg font-semibold text-foreground mb-4">Conversation</h3>
           <ConversationControls

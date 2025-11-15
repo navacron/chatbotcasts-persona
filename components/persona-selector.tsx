@@ -1,71 +1,52 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Check, Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 
 interface Persona {
   id: string
   name: string
-  title: string
-  avatar: string
-  color: string
+  prompt: string
+  document_link: string | null
+  is_public: boolean
+  user_id: string
+  created_at: string
+  updated_at: string
 }
 
-const POPULAR_PERSONAS: Persona[] = [
-  {
-    id: 'andrew-ng',
-    name: 'Andrew Ng',
-    title: 'AI Researcher & Educator',
-    avatar: '🤖',
-    color: 'from-blue-500 to-blue-600',
-  },
-  {
-    id: 'elon-musk',
-    name: 'Elon Musk',
-    title: 'Entrepreneur & Visionary',
-    avatar: '⚡',
-    color: 'from-orange-500 to-red-600',
-  },
-  {
-    id: 'sam-altman',
-    name: 'Sam Altman',
-    title: 'AI Industry Leader',
-    avatar: '🧠',
-    color: 'from-purple-500 to-pink-600',
-  },
-]
-
-const RECENTLY_USED_PERSONAS: Persona[] = [
-  {
-    id: 'jane-goodall',
-    name: 'Jane Goodall',
-    title: 'Primatologist & Conservationist',
-    avatar: '🌍',
-    color: 'from-green-500 to-emerald-600',
-  },
-  {
-    id: 'bill-gates',
-    name: 'Bill Gates',
-    title: 'Philanthropist & Tech Pioneer',
-    avatar: '💡',
-    color: 'from-cyan-500 to-blue-600',
-  },
-]
-
-const HOST_PERSONA: Persona = {
-  id: 'host',
-  name: 'ChatBotCast Host',
-  title: 'Moderator',
-  avatar: '🎙️',
-  color: 'from-slate-500 to-slate-600',
+const getPersonaTitle = (prompt: string): string => {
+  // Try to extract first sentence or first 50 chars
+  const firstSentence = prompt.split('.')[0]
+  return firstSentence.length > 50 
+    ? firstSentence.substring(0, 50) + '...'
+    : firstSentence
 }
 
-const AVAILABLE_PERSONAS: Persona[] = [
-  ...POPULAR_PERSONAS,
-  ...RECENTLY_USED_PERSONAS,
-  HOST_PERSONA,
-]
+// Helper function to get avatar emoji based on name
+const getPersonaAvatar = (name: string): string => {
+  const lowerName = name.toLowerCase()
+  if (lowerName.includes('andrew')) return '🤖'
+  if (lowerName.includes('elon')) return '⚡'
+  if (lowerName.includes('sam')) return '🧠'
+  if (lowerName.includes('jane')) return '🌍'
+  if (lowerName.includes('bill')) return '💡'
+  if (lowerName.includes('host')) return '🎙️'
+  return '👤'
+}
+
+// Helper function to get color gradient based on name
+const getPersonaColor = (name: string): string => {
+  const lowerName = name.toLowerCase()
+  if (lowerName.includes('andrew')) return 'from-blue-500 to-blue-600'
+  if (lowerName.includes('elon')) return 'from-orange-500 to-red-600'
+  if (lowerName.includes('sam')) return 'from-purple-500 to-pink-600'
+  if (lowerName.includes('jane')) return 'from-green-500 to-emerald-600'
+  if (lowerName.includes('bill')) return 'from-cyan-500 to-blue-600'
+  if (lowerName.includes('host')) return 'from-slate-500 to-slate-600'
+  return 'from-gray-500 to-gray-600'
+}
+// </CHANGE>
 
 interface PersonaSelectorProps {
   selected: string[]
@@ -78,6 +59,32 @@ export default function PersonaSelector({
 }: PersonaSelectorProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [publicPersonas, setPublicPersonas] = useState<Persona[]>([])
+  const [myPersonas, setMyPersonas] = useState<Persona[]>([])
+  const [loading, setLoading] = useState(true)
+
+  // Fetch personas from API
+  useEffect(() => {
+    fetchPersonas()
+  }, [searchQuery])
+
+  const fetchPersonas = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch(`/api/personas?q=${encodeURIComponent(searchQuery)}`)
+      const data = await response.json()
+      
+      if (response.ok) {
+        setPublicPersonas(data.publicPersonas || [])
+        setMyPersonas(data.myPersonas || [])
+      }
+    } catch (error) {
+      console.error('[v0] Error fetching personas:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+  // </CHANGE>
 
   const handleToggle = (id: string) => {
     if (selected.includes(id)) {
@@ -87,19 +94,10 @@ export default function PersonaSelector({
     }
   }
 
-  const filteredPersonas = AVAILABLE_PERSONAS.filter(
-    (persona) =>
-      persona.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      persona.title.toLowerCase().includes(searchQuery.toLowerCase())
-  )
-
-  const filteredPopular = filteredPersonas.filter((p) =>
-    POPULAR_PERSONAS.some((pp) => pp.id === p.id)
-  )
-  const filteredRecent = filteredPersonas.filter((p) =>
-    RECENTLY_USED_PERSONAS.some((pp) => pp.id === p.id)
-  )
-  const filteredHost = filteredPersonas.filter((p) => p.id === 'host')
+  const hostPersonas = publicPersonas.filter(p => p.name.toLowerCase().includes('host'))
+  const popularPersonas = publicPersonas.filter(p => !p.name.toLowerCase().includes('host')).slice(0, 3)
+  const recentPersonas = myPersonas.slice(0, 3)
+  // </CHANGE>
 
   const renderPersonaGrid = (personas: Persona[]) => (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -131,10 +129,10 @@ export default function PersonaSelector({
                 <div
                   className={`
                     h-12 w-12 rounded-full flex items-center justify-center text-xl
-                    bg-gradient-to-br ${persona.color}
+                    bg-gradient-to-br ${getPersonaColor(persona.name)}
                   `}
                 >
-                  {persona.avatar}
+                  {getPersonaAvatar(persona.name)}
                 </div>
               </div>
 
@@ -143,8 +141,8 @@ export default function PersonaSelector({
                 <div className="font-semibold text-foreground text-sm">
                   {persona.name}
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  {persona.title}
+                <div className="text-xs text-muted-foreground line-clamp-2">
+                  {getPersonaTitle(persona.prompt)}
                 </div>
               </div>
 
@@ -175,26 +173,30 @@ export default function PersonaSelector({
         />
       </div>
 
-      {filteredPersonas.length > 0 ? (
+      {loading ? (
+        <div className="text-center py-8 text-muted-foreground">
+          Loading personas...
+        </div>
+      ) : (publicPersonas.length > 0 || myPersonas.length > 0) ? (
         <div className="space-y-6">
-          {filteredPopular.length > 0 && (
+          {popularPersonas.length > 0 && (
             <div className="space-y-2">
               <h3 className="text-sm font-semibold text-foreground">Popular Personas</h3>
-              {renderPersonaGrid(filteredPopular)}
+              {renderPersonaGrid(popularPersonas)}
             </div>
           )}
 
-          {filteredRecent.length > 0 && (
+          {recentPersonas.length > 0 && (
             <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-foreground">Recently Used</h3>
-              {renderPersonaGrid(filteredRecent)}
+              <h3 className="text-sm font-semibold text-foreground">My Personas</h3>
+              {renderPersonaGrid(recentPersonas)}
             </div>
           )}
 
-          {filteredHost.length > 0 && (
+          {hostPersonas.length > 0 && (
             <div className="space-y-2">
               <h3 className="text-sm font-semibold text-foreground">Host</h3>
-              {renderPersonaGrid(filteredHost)}
+              {renderPersonaGrid(hostPersonas)}
             </div>
           )}
         </div>
@@ -203,6 +205,7 @@ export default function PersonaSelector({
           No personas found matching "{searchQuery}"
         </div>
       )}
+      {/* </CHANGE> */}
     </div>
   )
 }

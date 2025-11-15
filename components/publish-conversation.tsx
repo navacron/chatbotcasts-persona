@@ -1,21 +1,74 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { CheckCircle2 } from 'lucide-react'
+import { CheckCircle2, Loader2 } from 'lucide-react'
 
 interface PublishConversationProps {
   conversationData: any
+  chatData: any // Added chat data with messages and personas
 }
 
-export default function PublishConversation({ conversationData }: PublishConversationProps) {
-  const [title, setTitle] = useState('')
+export default function PublishConversation({ conversationData, chatData }: PublishConversationProps) {
+  const [title, setTitle] = useState(chatData?.topic || conversationData?.topic || '')
   const [description, setDescription] = useState('')
+  const [slug, setSlug] = useState('')
   const [isPublic, setIsPublic] = useState(true)
   const [published, setPublished] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [personaNames, setPersonaNames] = useState<string[]>([])
+
+  useEffect(() => {
+    const fetchPersonaNames = async () => {
+      if (!chatData?.personas || chatData.personas.length === 0) return
+      
+      try {
+        const response = await fetch('/api/personas')
+        const data = await response.json()
+        
+        const allPersonas = [
+          ...(data.publicPersonas || []),
+          ...(data.myPersonas || [])
+        ]
+        
+        const names = chatData.personas
+          .map((id: string) => {
+            const persona = allPersonas.find((p: any) => p.id === id)
+            return persona?.name
+          })
+          .filter(Boolean)
+        
+        setPersonaNames(names)
+      } catch (error) {
+        console.error('[v0] Error fetching persona names:', error)
+      }
+    }
+    
+    fetchPersonaNames()
+    
+    if (title && !slug) {
+      setSlug(generateSlug(title))
+    }
+  }, [chatData, title, slug])
+
+  const handleTitleChange = (value: string) => {
+    setTitle(value)
+    // Auto-generate slug if it hasn't been manually edited
+    if (!slug || slug === generateSlug(title)) {
+      setSlug(generateSlug(value))
+    }
+  }
+
+  const generateSlug = (text: string) => {
+    return text
+      .toLowerCase()
+      .replace(/[^\w\s-]/g, '') // Remove special characters
+      .replace(/\s+/g, '-') // Replace spaces with hyphens
+      .replace(/--+/g, '-') // Replace multiple hyphens with single
+      .replace(/^-+|-+$/g, '') // Remove leading/trailing hyphens
+  }
 
   const handlePublish = async () => {
     if (!title.trim()) {
@@ -23,12 +76,48 @@ export default function PublishConversation({ conversationData }: PublishConvers
       return
     }
 
+    if (!slug.trim()) {
+      setError('Please enter a slug')
+      return
+    }
+
+    if (!/^[a-z0-9-]+$/.test(slug)) {
+      setError('Slug can only contain lowercase letters, numbers, and hyphens')
+      return
+    }
+
     setIsLoading(true)
     setError(null)
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      const response = await fetch('/api/addUpdateConversation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title,
+          description,
+          slug,
+          topic: chatData?.topic || conversationData?.topic || 'General Discussion',
+          data: {
+            ...conversationData,
+            messages: chatData?.messages || [],
+            personas: chatData?.personas || [],
+            turnMode: chatData?.turnMode,
+            numTurns: chatData?.numTurns,
+          },
+          isPublic,
+          personaIds: chatData?.personas || [], // Send persona IDs for junction table
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to publish conversation')
+      }
+
       setPublished(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
@@ -36,6 +125,10 @@ export default function PublishConversation({ conversationData }: PublishConvers
       setIsLoading(false)
     }
   }
+
+  const formattedChat = chatData?.messages?.map((msg: any) => 
+    `${msg.name}: ${msg.message}`
+  ).join('\n\n') || 'No messages yet'
 
   if (published) {
     return (
@@ -45,9 +138,19 @@ export default function PublishConversation({ conversationData }: PublishConvers
         <p className="text-green-700">
           Your conversation has been shared with the community. You can view it on the home page.
         </p>
+        <div className="bg-white border border-green-300 rounded-lg p-4">
+          <p className="text-sm text-muted-foreground mb-2">Your conversation URL:</p>
+          <code className="text-sm font-mono text-foreground bg-muted px-3 py-1 rounded">
+            /c/{slug}
+          </code>
+        </div>
         <div className="flex gap-4 justify-center pt-4">
-          <Button variant="outline">View Conversation</Button>
-          <Button>Create Another</Button>
+          <Button variant="outline" onClick={() => window.location.href = `/c/${slug}`}>
+            View Conversation
+          </Button>
+          <Button onClick={() => window.location.href = '/create'}>
+            Create Another
+          </Button>
         </div>
       </div>
     )
@@ -77,9 +180,63 @@ export default function PublishConversation({ conversationData }: PublishConvers
           <Input
             placeholder="e.g., AI Ethics: Three Perspectives"
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => handleTitleChange(e.target.value)}
             className="h-11"
           />
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-semibold text-foreground">
+            URL Slug
+          </label>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">/c/</span>
+            <Input
+              placeholder="ai-ethics-three-perspectives"
+              value={slug}
+              onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))}
+              className="h-11 flex-1"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Only lowercase letters, numbers, and hyphens. This will be your conversation's URL.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-semibold text-foreground">
+            Chat Participants
+          </label>
+          <div className="bg-muted/50 border border-border rounded-lg p-3">
+            {personaNames.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {personaNames.map((name, index) => (
+                  <span
+                    key={index}
+                    className="inline-flex items-center gap-1 bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-medium"
+                  >
+                    {name}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No participants selected</p>
+            )}
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-semibold text-foreground">
+            Conversation Preview
+          </label>
+          <div className="bg-muted/50 border border-border rounded-lg p-4 max-h-64 overflow-y-auto">
+            <pre className="text-sm text-foreground whitespace-pre-wrap font-sans">
+              {formattedChat}
+            </pre>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {chatData?.messages?.length || 0} messages in this conversation
+          </p>
         </div>
 
         {/* Description */}
@@ -131,7 +288,7 @@ export default function PublishConversation({ conversationData }: PublishConvers
 
         {/* Buttons */}
         <div className="flex gap-4 pt-4">
-          <Button variant="outline">
+          <Button variant="outline" disabled={isLoading}>
             Save as Draft
           </Button>
           <Button
@@ -139,7 +296,14 @@ export default function PublishConversation({ conversationData }: PublishConvers
             disabled={isLoading}
             className="flex-1 bg-gradient-to-r from-primary to-accent hover:opacity-90"
           >
-            {isLoading ? 'Publishing...' : 'Publish Conversation'}
+            {isLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Publishing...
+              </>
+            ) : (
+              'Publish Conversation'
+            )}
           </Button>
         </div>
       </div>

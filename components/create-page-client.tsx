@@ -11,6 +11,7 @@ import { ArrowLeft } from 'lucide-react'
 export default function CreatePageClient() {
   const [state, setState] = useState<'setup' | 'chatting' | 'publish'>('setup')
   const [conversationData, setConversationData] = useState<any>(null)
+  const [chatData, setChatData] = useState<any>(null)
   const searchParams = useSearchParams()
 
   useEffect(() => {
@@ -31,7 +32,8 @@ export default function CreatePageClient() {
     setState('chatting')
   }
 
-  const handlePublish = () => {
+  const handlePublish = (publishData: any) => {
+    setChatData(publishData)
     setState('publish')
   }
 
@@ -59,7 +61,7 @@ export default function CreatePageClient() {
           </button>
           <ChatConversation data={conversationData} onPublish={handlePublish} />
         </div>
-      ) : state === 'publish' && conversationData ? (
+      ) : state === 'publish' && conversationData && chatData ? (
         <div className="max-w-2xl mx-auto px-4 md:px-8 py-8">
           <button
             onClick={handleBack}
@@ -68,7 +70,10 @@ export default function CreatePageClient() {
             <ArrowLeft className="h-4 w-4" />
             Back to Conversation
           </button>
-          <PublishConversation conversationData={conversationData} />
+          <PublishConversation 
+            conversationData={conversationData} 
+            chatData={chatData}
+          />
         </div>
       ) : null}
     </>

@@ -9,6 +9,7 @@ interface ConversationMessageProps {
   }
   isActive: boolean
   isHighlighted: boolean
+  personaDetails?: any
 }
 
 const PERSONA_DETAILS: any = {
@@ -24,8 +25,12 @@ export default function ConversationMessage({
   message,
   isActive,
   isHighlighted,
+  personaDetails,
 }: ConversationMessageProps) {
-  const detail = PERSONA_DETAILS[message.persona]
+  const detail = personaDetails || PERSONA_DETAILS[message.persona] || {
+    color: 'from-gray-500 to-gray-600',
+    avatar: '👤'
+  }
 
   return (
     <div
@@ -44,10 +49,10 @@ export default function ConversationMessage({
         <div
           className={`
             h-10 w-10 rounded-full flex items-center justify-center text-lg flex-shrink-0
-            bg-gradient-to-br ${detail?.color || 'from-slate-500 to-slate-600'}
+            bg-gradient-to-br ${detail.color}
           `}
         >
-          {detail?.avatar}
+          {detail.avatar}
         </div>
 
         <div className="flex-1 min-w-0">

@@ -15,6 +15,20 @@ export default function PersonaSwitcher({
     <div className="flex flex-wrap gap-2">
       {personas.map((personaId) => {
         const detail = personaDetails[personaId]
+        if (!detail) {
+          return (
+            <button
+              key={personaId}
+              onClick={() => onSelect(personaId)}
+              className="px-3 py-2 rounded-lg border text-sm font-medium bg-muted text-muted-foreground cursor-not-allowed"
+              disabled
+            >
+              <span className="text-base">👤</span>
+              <span>Loading...</span>
+            </button>
+          )
+        }
+        
         const isSelected = selected === personaId
 
         return (
