@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { AlertCircle, CheckCircle2 } from 'lucide-react'
+import { CheckCircle2 } from 'lucide-react'
 
 interface PublishConversationProps {
   conversationData: any
@@ -13,19 +13,11 @@ export default function PublishConversation({ conversationData }: PublishConvers
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [isPublic, setIsPublic] = useState(true)
-  const [isSignedIn, setIsSignedIn] = useState(false)
-  const [showSignIn, setShowSignIn] = useState(false)
   const [published, setPublished] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [publishedConversation, setPublishedConversation] = useState<any>(null)
 
   const handlePublish = async () => {
-    if (!isSignedIn) {
-      setShowSignIn(true)
-      return
-    }
-
     if (!title.trim()) {
       setError('Please enter a conversation title')
       return
@@ -35,27 +27,8 @@ export default function PublishConversation({ conversationData }: PublishConvers
     setError(null)
 
     try {
-      const response = await fetch('/api/conversations/publish', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          title,
-          description,
-          topic: conversationData?.topic || 'Untitled Topic',
-          data: conversationData, // Store entire conversation data as JSON
-          isPublic,
-        }),
-      })
-
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Failed to publish conversation')
-      }
-
-      const { conversation } = await response.json()
-      setPublishedConversation(conversation)
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000))
       setPublished(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
@@ -64,7 +37,7 @@ export default function PublishConversation({ conversationData }: PublishConvers
     }
   }
 
-  if (published && publishedConversation) {
+  if (published) {
     return (
       <div className="bg-green-50 border border-green-200 rounded-lg p-8 text-center space-y-4">
         <CheckCircle2 className="h-16 w-16 text-green-600 mx-auto" />
@@ -75,53 +48,6 @@ export default function PublishConversation({ conversationData }: PublishConvers
         <div className="flex gap-4 justify-center pt-4">
           <Button variant="outline">View Conversation</Button>
           <Button>Create Another</Button>
-        </div>
-      </div>
-    )
-  }
-
-  if (showSignIn) {
-    return (
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-8 space-y-6">
-        <div className="flex gap-3">
-          <AlertCircle className="h-6 w-6 text-blue-600 flex-shrink-0 mt-1" />
-          <div>
-            <h3 className="font-semibold text-blue-900 mb-2">Sign up to publish</h3>
-            <p className="text-blue-700 mb-4">
-              You need to create an account to publish conversations. It only takes a minute!
-            </p>
-            <div className="space-y-3">
-              <Input
-                placeholder="Email address"
-                type="email"
-                className="bg-white"
-              />
-              <Input
-                placeholder="Password"
-                type="password"
-                className="bg-white"
-              />
-              <Input
-                placeholder="Confirm password"
-                type="password"
-                className="bg-white"
-              />
-              <div className="flex gap-3 pt-4">
-                <Button variant="outline" onClick={() => setShowSignIn(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  className="bg-gradient-to-r from-primary to-accent hover:opacity-90"
-                  onClick={() => {
-                    setIsSignedIn(true)
-                    setShowSignIn(false)
-                  }}
-                >
-                  Create Account
-                </Button>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     )

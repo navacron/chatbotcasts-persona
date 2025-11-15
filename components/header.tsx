@@ -1,14 +1,43 @@
 'use client'
 
-import { useState } from 'react'
-import { Menu, X, LogIn, User, Settings } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Menu, X, LogOut, User, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import Image from 'next/image'
+import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
+import type { User as SupabaseUser } from '@supabase/supabase-js'
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const isLoggedIn = true // Mock auth state - set to true to show logged in nav
+  const [user, setUser] = useState<SupabaseUser | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const router = useRouter()
+
+  useEffect(() => {
+    const supabase = createClient()
+    
+    // Get initial user
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUser(user)
+      setIsLoading(false)
+    })
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  const handleSignOut = async () => {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push('/')
+    router.refresh()
+  }
 
   return (
     <header className="border-b border-border bg-white/80 backdrop-blur-sm sticky top-0 z-50">
@@ -37,52 +66,55 @@ export default function Header() {
             <Link href="/guests" className="text-foreground hover:text-primary transition-colors">
               Guests
             </Link>
-            {isLoggedIn && (
+            {user && (
               <Link href="/dashboard" className="text-foreground hover:text-primary transition-colors">
                 Dashboard
               </Link>
             )}
           </nav>
 
-          {/* Auth Buttons */}
-          <div className="flex items-center gap-3">
-            {isLoggedIn ? (
-              <>
+          <div className="hidden md:flex items-center gap-4">
+            {isLoading ? (
+              <div className="w-20 h-9 bg-secondary animate-pulse rounded" />
+            ) : user ? (
+              <div className="flex items-center gap-2">
                 <Link href="/profile">
-                  <Button variant="ghost" size="icon" title="Profile">
+                  <Button variant="ghost" size="icon">
                     <User className="h-5 w-5" />
                   </Button>
                 </Link>
                 <Link href="/profile">
-                  <Button variant="ghost" size="icon" title="Settings">
+                  <Button variant="ghost" size="icon">
                     <Settings className="h-5 w-5" />
                   </Button>
                 </Link>
-              </>
+                <Button variant="ghost" size="icon" onClick={handleSignOut}>
+                  <LogOut className="h-5 w-5" />
+                </Button>
+              </div>
             ) : (
               <>
-                <Button variant="ghost" size="sm" className="hidden sm:flex">
-                  <LogIn className="h-4 w-4 mr-2" />
-                  Sign In
-                </Button>
-                <Button size="sm" className="bg-gradient-to-r from-primary to-accent hover:opacity-90">
-                  Sign Up
-                </Button>
+                <Link href="/auth/login">
+                  <Button variant="ghost">Sign In</Button>
+                </Link>
+                <Link href="/auth/signup">
+                  <Button>Sign Up</Button>
+                </Link>
               </>
             )}
-
-            {/* Mobile Menu */}
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="md:hidden p-2"
-            >
-              {isMenuOpen ? (
-                <X className="h-5 w-5" />
-              ) : (
-                <Menu className="h-5 w-5" />
-              )}
-            </button>
           </div>
+
+          {/* Mobile Menu */}
+          <button
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className="md:hidden p-2"
+          >
+            {isMenuOpen ? (
+              <X className="h-5 w-5" />
+            ) : (
+              <Menu className="h-5 w-5" />
+            )}
+          </button>
         </div>
 
         {/* Mobile Menu */}
@@ -97,16 +129,35 @@ export default function Header() {
             <Link href="/guests" className="block px-4 py-2 text-foreground hover:bg-secondary rounded">
               Browse Guests
             </Link>
-            {isLoggedIn && (
-              <>
-                <Link href="/dashboard" className="block px-4 py-2 text-foreground hover:bg-secondary rounded">
-                  Dashboard
-                </Link>
-                <Link href="/profile" className="block px-4 py-2 text-foreground hover:bg-secondary rounded">
-                  Profile
-                </Link>
-              </>
+            {user && (
+              <Link href="/dashboard" className="block px-4 py-2 text-foreground hover:bg-secondary rounded">
+                Dashboard
+              </Link>
             )}
+            <div className="border-t border-border pt-2">
+              {user ? (
+                <>
+                  <Link href="/profile" className="block px-4 py-2 text-foreground hover:bg-secondary rounded">
+                    Profile
+                  </Link>
+                  <button
+                    onClick={handleSignOut}
+                    className="block w-full text-left px-4 py-2 text-foreground hover:bg-secondary rounded"
+                  >
+                    Sign Out
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link href="/auth/login" className="block px-4 py-2 text-foreground hover:bg-secondary rounded">
+                    Sign In
+                  </Link>
+                  <Link href="/auth/signup" className="block px-4 py-2 text-foreground hover:bg-secondary rounded">
+                    Sign Up
+                  </Link>
+                </>
+              )}
+            </div>
           </div>
         )}
       </div>
