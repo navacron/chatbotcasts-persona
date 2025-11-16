@@ -10,6 +10,13 @@ interface PublishConversationProps {
   chatData: any // Added chat data with messages and personas
 }
 
+interface Category {
+  id: string
+  name: string
+  slug: string
+  description: string | null
+}
+
 export default function PublishConversation({ conversationData, chatData }: PublishConversationProps) {
   const [title, setTitle] = useState(chatData?.topic || conversationData?.topic || '')
   const [description, setDescription] = useState('')
@@ -19,6 +26,30 @@ export default function PublishConversation({ conversationData, chatData }: Publ
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [personaNames, setPersonaNames] = useState<string[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('')
+  const [loadingCategories, setLoadingCategories] = useState(true)
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch('/api/categories')
+        const data = await response.json()
+        setCategories(data.categories || [])
+        
+        const otherCategory = data.categories?.find((c: Category) => c.slug === 'other')
+        if (otherCategory) {
+          setSelectedCategoryId(otherCategory.id)
+        }
+      } catch (error) {
+        console.error('[v0] Error fetching categories:', error)
+      } finally {
+        setLoadingCategories(false)
+      }
+    }
+
+    fetchCategories()
+  }, [])
 
   useEffect(() => {
     const fetchPersonaNames = async () => {
@@ -55,7 +86,6 @@ export default function PublishConversation({ conversationData, chatData }: Publ
 
   const handleTitleChange = (value: string) => {
     setTitle(value)
-    // Auto-generate slug if it hasn't been manually edited
     if (!slug || slug === generateSlug(title)) {
       setSlug(generateSlug(value))
     }
@@ -64,10 +94,10 @@ export default function PublishConversation({ conversationData, chatData }: Publ
   const generateSlug = (text: string) => {
     return text
       .toLowerCase()
-      .replace(/[^\w\s-]/g, '') // Remove special characters
-      .replace(/\s+/g, '-') // Replace spaces with hyphens
-      .replace(/--+/g, '-') // Replace multiple hyphens with single
-      .replace(/^-+|-+$/g, '') // Remove leading/trailing hyphens
+      .replace(/[^\w\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/--+/g, '-')
+      .replace(/^-+|-+$/g, '')
   }
 
   const handlePublish = async () => {
@@ -83,6 +113,11 @@ export default function PublishConversation({ conversationData, chatData }: Publ
 
     if (!/^[a-z0-9-]+$/.test(slug)) {
       setError('Slug can only contain lowercase letters, numbers, and hyphens')
+      return
+    }
+
+    if (!selectedCategoryId) {
+      setError('Please select a category')
       return
     }
 
@@ -108,7 +143,8 @@ export default function PublishConversation({ conversationData, chatData }: Publ
             numTurns: chatData?.numTurns,
           },
           isPublic,
-          personaIds: chatData?.personas || [], // Send persona IDs for junction table
+          personaIds: chatData?.personas || [],
+          categoryId: selectedCategoryId,
         }),
       })
 
@@ -172,7 +208,6 @@ export default function PublishConversation({ conversationData, chatData }: Publ
           </div>
         )}
 
-        {/* Title */}
         <div className="space-y-2">
           <label className="text-sm font-semibold text-foreground">
             Conversation Title
@@ -200,6 +235,34 @@ export default function PublishConversation({ conversationData, chatData }: Publ
           </div>
           <p className="text-xs text-muted-foreground">
             Only lowercase letters, numbers, and hyphens. This will be your conversation's URL.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-semibold text-foreground">
+            Category
+          </label>
+          {loadingCategories ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading categories...
+            </div>
+          ) : (
+            <select
+              value={selectedCategoryId}
+              onChange={(e) => setSelectedCategoryId(e.target.value)}
+              className="w-full h-11 px-3 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="">Select a category</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+          )}
+          <p className="text-xs text-muted-foreground">
+            Choose the category that best describes your conversation
           </p>
         </div>
 
@@ -239,7 +302,6 @@ export default function PublishConversation({ conversationData, chatData }: Publ
           </p>
         </div>
 
-        {/* Description */}
         <div className="space-y-2">
           <label className="text-sm font-semibold text-foreground">
             Description
@@ -252,7 +314,6 @@ export default function PublishConversation({ conversationData, chatData }: Publ
           />
         </div>
 
-        {/* Privacy */}
         <div className="space-y-3">
           <label className="text-sm font-semibold text-foreground">
             Privacy
@@ -279,14 +340,12 @@ export default function PublishConversation({ conversationData, chatData }: Publ
           </div>
         </div>
 
-        {/* Info Box */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <p className="text-sm text-blue-900">
             <strong>Earn Credits:</strong> When your conversation is published, you earn credits for each view and interaction. Use these to create more conversations!
           </p>
         </div>
 
-        {/* Buttons */}
         <div className="flex gap-4 pt-4">
           <Button variant="outline" disabled={isLoading}>
             Save as Draft

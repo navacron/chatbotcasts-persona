@@ -12,18 +12,40 @@ export default function CreatePageClient() {
   const [state, setState] = useState<'setup' | 'chatting' | 'publish'>('setup')
   const [conversationData, setConversationData] = useState<any>(null)
   const [chatData, setChatData] = useState<any>(null)
+  const [isLoading, setIsLoading] = useState(false)
   const searchParams = useSearchParams()
 
   useEffect(() => {
-    const conversationParam = searchParams.get('conversation')
-    if (conversationParam) {
-      try {
-        const decodedData = JSON.parse(decodeURIComponent(conversationParam))
-        setConversationData(decodedData)
-        setState('chatting')
-      } catch (error) {
-        console.error('[v0] Failed to load conversation:', error)
-      }
+    const conversationId = searchParams.get('conversationId')
+    if (conversationId) {
+      setIsLoading(true)
+      fetch(`/api/conversations/by-id/${conversationId}`)
+        .then((res) => res.json())
+        .then((data) => {
+          console.log('[v0] Loaded conversation for extension:', data)
+          
+          if (data.error) {
+            console.error('[v0] Error loading conversation:', data.error)
+            return
+          }
+
+          const conversationData = {
+            topic: data.conversation.title,
+            personas: data.personas.map((p: any) => p.id),
+            messages: data.conversation.data?.messages || [],
+            turnMode: 'manual',
+            numTurns: 3,
+          }
+          
+          setConversationData(conversationData)
+          setState('chatting')
+        })
+        .catch((error) => {
+          console.error('[v0] Failed to load conversation:', error)
+        })
+        .finally(() => {
+          setIsLoading(false)
+        })
     }
   }, [searchParams])
 
@@ -44,6 +66,19 @@ export default function CreatePageClient() {
       setState('setup')
       setConversationData(null)
     }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="max-w-6xl mx-auto px-4 md:px-8 py-8">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading conversation...</p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (

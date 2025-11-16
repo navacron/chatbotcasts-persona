@@ -46,7 +46,11 @@ export default function ChatConversation({ data, onPublish }: ChatConversationPr
   const [messages, setMessages] = useState<any[]>(() => {
     console.log("[v0] ChatConversation received data:", data)
     if (data?.messages && Array.isArray(data.messages)) {
-      return data.messages
+      return data.messages.map((msg: any, index: number) => ({
+        ...msg,
+        id: msg.id || index + 1,
+        timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date()
+      }))
     }
     return []
   })
@@ -174,8 +178,9 @@ export default function ChatConversation({ data, onPublish }: ChatConversationPr
       }
 
       // Create new message from API response
+      const maxId = messages.length > 0 ? Math.max(...messages.map(m => m.id || 0)) : 0
       const newMessage = {
-        id: messages.length + 1,
+        id: maxId + 1,
         persona: speakerToUse,
         name: personaDetail.name,
         message: result.message,

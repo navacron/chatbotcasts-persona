@@ -6,8 +6,9 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient()
     const searchParams = request.nextUrl.searchParams
     const categoryId = searchParams.get('categoryId')
+    const userId = searchParams.get('userId')
 
-    console.log('[v0] Fetching conversations with categoryId:', categoryId)
+    console.log('[v0] Fetching conversations with categoryId:', categoryId, 'userId:', userId)
 
     let query = supabase
       .from('conversations')
@@ -19,12 +20,17 @@ export async function GET(request: NextRequest) {
         view_count,
         created_at,
         category_id,
-        user_id
+        user_id,
+        is_public
       `)
-      .eq('is_public', true)
       .order('created_at', { ascending: false })
 
-    // Filter by category if provided
+    if (userId) {
+      query = query.eq('user_id', userId)
+    } else {
+      query = query.eq('is_public', true)
+    }
+
     if (categoryId && categoryId !== 'all') {
       query = query.eq('category_id', categoryId)
     }
@@ -38,7 +44,6 @@ export async function GET(request: NextRequest) {
 
     console.log('[v0] Found conversations:', conversations?.length || 0)
 
-    // Fetch personas for each conversation
     const conversationsWithPersonas = await Promise.all(
       (conversations || []).map(async (conv) => {
         const { data: personaLinks, error: personaError } = await supabase

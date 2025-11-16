@@ -3,8 +3,12 @@
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
-import { Clock, Eye, User } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Clock, Eye, User, MessageSquarePlus } from 'lucide-react'
 import Header from '@/components/header'
+import { useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
 
 interface Message {
   id: number
@@ -45,6 +49,18 @@ export default function ConversationDisplay({
   personas,
   user,
 }: ConversationDisplayProps) {
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const router = useRouter()
+  
+  useEffect(() => {
+    const checkAuth = async () => {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      setIsLoggedIn(!!user)
+    }
+    checkAuth()
+  }, [])
+
   const messages = conversation.data?.messages || []
   const personaMap = new Map(personas.map((p) => [p.id, p]))
 
@@ -84,6 +100,10 @@ export default function ConversationDisplay({
       month: 'long',
       day: 'numeric',
     })
+  }
+
+  const handleExtendConversation = () => {
+    router.push(`/create?conversationId=${conversation.id}`)
   }
 
   return (
@@ -131,6 +151,19 @@ export default function ConversationDisplay({
               ))}
             </div>
           </div>
+
+          {/* Extend Conversation button for logged-in users */}
+          {isLoggedIn && (
+            <div className="mb-8">
+              <Button
+                onClick={handleExtendConversation}
+                className="bg-gradient-to-r from-primary to-accent hover:opacity-90"
+              >
+                <MessageSquarePlus className="h-4 w-4 mr-2" />
+                Extend Conversation
+              </Button>
+            </div>
+          )}
         </div>
 
         <div className="space-y-1">

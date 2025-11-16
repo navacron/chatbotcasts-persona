@@ -29,6 +29,17 @@ interface Conversation {
   categoryId: string
 }
 
+interface Persona {
+  id: string
+  name: string
+  prompt: string
+  document_link: string | null
+  is_public: boolean
+  user_id: string
+  created_at: string
+  updated_at: string
+}
+
 const CATEGORIES = [
   { id: 'tech', name: 'Technology', color: 'from-blue-500 to-blue-600' },
   { id: 'business', name: 'Business', color: 'from-green-500 to-green-600' },
@@ -83,25 +94,6 @@ const MOCK_CONVERSATIONS = [
   },
 ]
 
-const MOCK_GUESTS = [
-  {
-    id: 'guest1',
-    name: 'Dr. Jane Smith',
-    title: 'AI Researcher',
-    author: 'Alex Chen',
-    uses: 234,
-    rating: 4.9,
-  },
-  {
-    id: 'guest2',
-    name: 'Climate Expert',
-    title: 'Environmental Scientist',
-    author: 'Sarah Mitchell',
-    uses: 156,
-    rating: 4.7,
-  },
-]
-
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
@@ -110,6 +102,8 @@ export default function Home() {
   const [loadingCategories, setLoadingCategories] = useState(true)
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [loadingConversations, setLoadingConversations] = useState(true)
+  const [personas, setPersonas] = useState<Persona[]>([])
+  const [loadingPersonas, setLoadingPersonas] = useState(false)
 
   useEffect(() => {
     async function fetchCategories() {
@@ -149,14 +143,41 @@ export default function Home() {
     fetchConversations()
   }, [selectedCategory])
 
+  useEffect(() => {
+    async function fetchPersonas() {
+      if (activeTab !== 'guests') return
+      
+      setLoadingPersonas(true)
+      try {
+        const url = searchQuery 
+          ? `/api/personas?q=${encodeURIComponent(searchQuery)}`
+          : '/api/personas'
+        const response = await fetch(url)
+        const data = await response.json()
+        
+        if (response.ok) {
+          setPersonas(data.publicPersonas || [])
+        }
+      } catch (error) {
+        console.error('[v0] Error fetching personas:', error)
+      } finally {
+        setLoadingPersonas(false)
+      }
+    }
+    
+    if (activeTab === 'guests') {
+      fetchPersonas()
+    }
+  }, [activeTab, searchQuery])
+
   const filteredConversations = conversations.filter((conv) =>
     conv.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     conv.description.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  const filteredGuests = MOCK_GUESTS.filter((guest) =>
-    guest.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    guest.title.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredGuests = personas.filter((persona) =>
+    persona.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    persona.prompt?.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
   return (
@@ -334,17 +355,33 @@ export default function Home() {
             <h2 className="text-2xl font-bold text-foreground">
               Community Guests
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredGuests.length > 0 ? (
-                filteredGuests.map((guest) => (
-                  <GuestCard key={guest.id} guest={guest} />
-                ))
-              ) : (
-                <div className="col-span-full text-center py-12">
-                  <p className="text-muted-foreground">No guests found matching your search.</p>
-                </div>
-              )}
-            </div>
+            {loadingPersonas ? (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">Loading guests...</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredGuests.length > 0 ? (
+                  filteredGuests.map((persona) => (
+                    <GuestCard
+                      key={persona.id}
+                      guest={{
+                        id: persona.id,
+                        name: persona.name,
+                        title: persona.prompt?.substring(0, 100) || 'AI Persona',
+                        author: 'Community',
+                        uses: 0,
+                        rating: 4.5,
+                      }}
+                    />
+                  ))
+                ) : (
+                  <div className="col-span-full text-center py-12">
+                    <p className="text-muted-foreground">No guests found matching your search.</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

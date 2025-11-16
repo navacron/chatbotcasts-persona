@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { title, description, topic, data, isPublic, slug, personaIds } = body;
+    const { title, description, topic, data, isPublic, slug, personaIds, categoryId } = body;
 
     // Validate required fields
     if (!title || !topic || !data) {
@@ -36,6 +36,13 @@ export async function POST(request: NextRequest) {
     if (!personaIds || !Array.isArray(personaIds) || personaIds.length === 0) {
       return NextResponse.json(
         { error: "At least one persona must be included in the conversation" },
+        { status: 400 }
+      );
+    }
+
+    if (!categoryId) {
+      return NextResponse.json(
+        { error: "Category is required" },
         { status: 400 }
       );
     }
@@ -61,7 +68,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Insert conversation
     const { data: conversation, error: insertError } = await supabase
       .from("conversations")
       .insert({
@@ -72,6 +78,7 @@ export async function POST(request: NextRequest) {
         data, // Stored as JSONB with messages, personas, etc.
         is_public: isPublic,
         slug,
+        category_id: categoryId, // Add category_id
       })
       .select()
       .single();
