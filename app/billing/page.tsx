@@ -8,35 +8,16 @@ import Footer from '@/components/footer'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@/lib/supabase/client'
+import { SUBSCRIPTION_PLANS } from '@/lib/products'
+import { startCheckoutSession } from '@/app/actions/stripe'
+import StripeCheckout from '@/components/stripe-checkout'
 
 export const dynamic = 'force-dynamic'
 
-const SUBSCRIPTION_PLANS = [
-  {
-    id: 'monthly',
-    name: 'Monthly',
-    price: 9.99,
-    credits: 1000,
-    period: 'month',
-    description: 'Perfect for regular creators',
-    popular: false,
-  },
-  {
-    id: 'yearly',
-    name: 'Yearly',
-    price: 99.9,
-    originalPrice: 119.88,
-    credits: 12000,
-    period: 'year',
-    description: 'Best value - 20% off',
-    popular: true,
-    discount: '20% OFF',
-  },
-]
-
 export default function BillingPage() {
-  const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
   const [user, setUser] = useState<any>(null)
+  const [loading, setLoading] = useState(false)
+  const [checkoutClientSecret, setCheckoutClientSecret] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createBrowserClient()
 
@@ -48,13 +29,71 @@ export default function BillingPage() {
     checkUser()
   }, [])
 
-  const handleSubscribe = async (planId: string) => {
+  const handleSelectPlan = async (planId: string) => {
+    const plan = SUBSCRIPTION_PLANS.find(p => p.id === planId)
+    if (!plan) return
+
+    if (plan.stripePriceId === null) {
+      if (!user) {
+        router.push(`/auth/signup?redirect=/billing`)
+        return
+      }
+      // Handle free plan signup (could update credits here)
+      alert('You are now on the free plan with 10 credits!')
+      return
+    }
+
     if (!user) {
       router.push(`/auth/login?redirect=/billing&plan=${planId}`)
       return
     }
 
-    console.log('[v0] User is authenticated, proceeding with subscription:', planId)
+    setLoading(true)
+    try {
+      const result = await startCheckoutSession(planId)
+      
+      if (result.type === 'free') {
+        alert('You are now on the free plan!')
+      } else if (result.type === 'checkout') {
+        setCheckoutClientSecret(result.clientSecret)
+      }
+    } catch (error) {
+      console.error('[v0] Error starting checkout:', error)
+      alert('Failed to start checkout. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (checkoutClientSecret) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <Header />
+        
+        <div className="max-w-6xl mx-auto px-4 md:px-8 py-12 flex-1">
+          <div className="text-center space-y-2 mb-8">
+            <h1 className="text-4xl font-bold text-foreground">Complete Your Subscription</h1>
+            <p className="text-lg text-muted-foreground">
+              You're one step away from unlimited AI conversations
+            </p>
+          </div>
+
+          <StripeCheckout clientSecret={checkoutClientSecret} />
+
+          <div className="text-center mt-8">
+            <Button 
+              variant="ghost" 
+              onClick={() => setCheckoutClientSecret(null)}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              ← Back to Plans
+            </Button>
+          </div>
+        </div>
+
+        <Footer />
+      </div>
+    )
   }
 
   return (
@@ -65,11 +104,11 @@ export default function BillingPage() {
         <div className="text-center space-y-2 mb-12">
           <h1 className="text-4xl font-bold text-foreground">Choose Your Plan</h1>
           <p className="text-lg text-muted-foreground">
-            Subscribe to generate unlimited AI conversations
+            Start free or subscribe for unlimited AI conversations
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto mb-12">
           {SUBSCRIPTION_PLANS.map((plan) => (
             <div
               key={plan.id}
@@ -93,8 +132,12 @@ export default function BillingPage() {
 
                 <div>
                   <div className="flex items-baseline gap-2 mb-1">
-                    <span className="text-5xl font-bold text-foreground">${plan.price}</span>
-                    <span className="text-muted-foreground">/{plan.period}</span>
+                    <span className="text-5xl font-bold text-foreground">
+                      ${plan.price === 0 ? '0' : plan.price}
+                    </span>
+                    {plan.price > 0 && (
+                      <span className="text-muted-foreground">/{plan.period}</span>
+                    )}
                   </div>
                   {plan.originalPrice && (
                     <p className="text-sm text-muted-foreground line-through">
@@ -102,48 +145,30 @@ export default function BillingPage() {
                     </p>
                   )}
                   <p className="text-sm text-muted-foreground mt-2">
-                    {plan.credits.toLocaleString()} credits per {plan.period}
+                    {plan.credits.toLocaleString()} credits {plan.price > 0 ? `per ${plan.period}` : 'to start'}
                   </p>
                 </div>
 
                 <Button
-                  onClick={() => {
-                    setSelectedPlan(plan.id)
-                    handleSubscribe(plan.id)
-                  }}
+                  onClick={() => handleSelectPlan(plan.id)}
+                  disabled={loading}
                   className={
                     plan.popular
                       ? 'w-full h-12 bg-gradient-to-r from-primary to-accent hover:opacity-90 text-lg'
                       : 'w-full h-12 text-lg'
                   }
-                  variant={plan.popular ? 'default' : 'outline'}
+                  variant={plan.popular ? 'default' : plan.price === 0 ? 'outline' : 'default'}
                 >
-                  {selectedPlan === plan.id ? 'Selected' : 'Get Started'}
+                  {loading ? 'Loading...' : 'Get Started'}
                 </Button>
 
                 <div className="space-y-3 border-t border-border pt-6">
-                  <div className="flex items-center gap-3">
-                    <Check className="h-5 w-5 text-green-600 flex-shrink-0" />
-                    <span className="text-sm text-foreground">
-                      {plan.credits.toLocaleString()} conversation generations
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Check className="h-5 w-5 text-green-600 flex-shrink-0" />
-                    <span className="text-sm text-foreground">Unlimited custom personas</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Check className="h-5 w-5 text-green-600 flex-shrink-0" />
-                    <span className="text-sm text-foreground">Publish & share conversations</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Check className="h-5 w-5 text-green-600 flex-shrink-0" />
-                    <span className="text-sm text-foreground">Priority support</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Check className="h-5 w-5 text-green-600 flex-shrink-0" />
-                    <span className="text-sm text-foreground">Cancel anytime</span>
-                  </div>
+                  {plan.features.map((feature, idx) => (
+                    <div key={idx} className="flex items-center gap-3">
+                      <Check className="h-5 w-5 text-green-600 flex-shrink-0" />
+                      <span className="text-sm text-foreground">{feature}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
