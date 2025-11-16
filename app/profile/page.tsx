@@ -15,7 +15,13 @@ export default async function ProfilePage() {
     redirect('/auth/login')
   }
 
-  const userData = {
+  const { data: userData } = await supabase
+    .from('users')
+    .select('credits, subscription_plan, subscription_status')
+    .eq('id', user.id)
+    .single()
+
+  const profileData = {
     id: user.id,
     name: user.user_metadata?.display_name || user.email?.split('@')[0] || 'User',
     email: user.email || '',
@@ -25,7 +31,10 @@ export default async function ProfilePage() {
       day: 'numeric',
     }),
     bio: user.user_metadata?.bio || '',
+    credits: userData?.credits || 0,
+    subscriptionPlan: userData?.subscription_plan || 'free',
+    subscriptionStatus: userData?.subscription_status || 'active',
   }
 
-  return <ProfileClient userData={userData} />
+  return <ProfileClient userData={profileData} />
 }

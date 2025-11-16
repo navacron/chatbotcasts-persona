@@ -25,6 +25,7 @@ export default function DashboardPage() {
   const [myGuests, setMyGuests] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<any>(null)
+  const [userCredits, setUserCredits] = useState<number>(0)
   const router = useRouter()
   const supabase = createBrowserClient()
 
@@ -37,6 +38,16 @@ export default function DashboardPage() {
           return
         }
         setUser(currentUser)
+
+        const { data: userData } = await supabase
+          .from('users')
+          .select('credits')
+          .eq('id', currentUser.id)
+          .single()
+        
+        if (userData) {
+          setUserCredits(userData.credits || 0)
+        }
 
         const conversationsRes = await fetch(`/api/conversations?userId=${currentUser.id}`)
         const conversationsData = await conversationsRes.json()
@@ -59,7 +70,7 @@ export default function DashboardPage() {
     { label: 'Conversations', value: myConversations.length, icon: Share2 },
     { label: 'Custom Guests', value: myGuests.length, icon: Users },
     { label: 'Total Views', value: myConversations.reduce((sum, conv) => sum + (conv.views || 0), 0), icon: TrendingUp },
-    { label: 'Credits Remaining', value: USER_DATA.credits, icon: Zap },
+    { label: 'Credits Remaining', value: userCredits, icon: Zap },
   ]
 
   const handleOpenConversation = (slug: string) => {
@@ -105,13 +116,13 @@ export default function DashboardPage() {
             })}
           </div>
 
-          {USER_DATA.credits < 50 && (
+          {userCredits < 50 && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-4">
               <Zap className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
               <div className="flex-1">
                 <h3 className="font-semibold text-blue-900 mb-1">Credits Running Low</h3>
                 <p className="text-sm text-blue-700 mb-3">
-                  You have {USER_DATA.credits} credits remaining. Purchase more to keep creating conversations.
+                  You have {userCredits} credits remaining. Purchase more to keep creating conversations.
                 </p>
                 <Link href="/billing">
                   <Button size="sm" className="bg-blue-600 hover:bg-blue-700">

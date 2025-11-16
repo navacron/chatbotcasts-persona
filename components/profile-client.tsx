@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { User, Mail, Calendar, LogOut, Save, Eye, EyeOff } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { User, Mail, Calendar, LogOut, Save, Eye, EyeOff, Zap, CreditCard } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import Header from '@/components/header'
@@ -15,6 +15,9 @@ interface UserData {
   email: string
   joinDate: string
   bio: string
+  credits: number
+  subscriptionPlan: string
+  subscriptionStatus: string
 }
 
 export default function ProfileClient({ userData }: { userData: UserData }) {
@@ -26,18 +29,35 @@ export default function ProfileClient({ userData }: { userData: UserData }) {
   const [saved, setSaved] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [billingHistory, setBillingHistory] = useState<any[]>([])
+  const [showBillingHistory, setShowBillingHistory] = useState(false)
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
+  useEffect(() => {
+    async function fetchBillingHistory() {
+      try {
+        const response = await fetch('/api/user/billing-history')
+        const data = await response.json()
+        setBillingHistory(data.history || [])
+      } catch (error) {
+        console.error('[v0] Error fetching billing history:', error)
+      }
+    }
+    
+    if (showBillingHistory) {
+      fetchBillingHistory()
+    }
+  }, [showBillingHistory])
+
   const handleSave = async () => {
     setLoading(true)
     setError('')
 
     try {
-      // Update user metadata
       const { error: updateError } = await supabase.auth.updateUser({
         data: {
           display_name: formData.name,
@@ -68,34 +88,69 @@ export default function ProfileClient({ userData }: { userData: UserData }) {
     setFormData({ ...formData, [field]: value })
   }
 
+  const formatPlanName = (plan: string) => {
+    if (plan === 'free') return 'Free'
+    if (plan === 'monthly') return 'Monthly Pro'
+    if (plan === 'yearly') return 'Yearly Pro'
+    return plan
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
 
       <div className="max-w-2xl mx-auto px-4 md:px-8 py-12">
-        {/* Header */}
         <div className="space-y-2 mb-12">
           <h1 className="text-4xl font-bold text-foreground">Account Settings</h1>
           <p className="text-muted-foreground">Manage your profile and account preferences</p>
         </div>
 
-        {/* Success Message */}
         {saved && (
           <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4 text-green-700 text-sm">
             Profile updated successfully!
           </div>
         )}
 
-        {/* Error Message */}
         {error && (
           <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 text-sm">
             {error}
           </div>
         )}
 
-        {/* Profile Card */}
+        <div className="bg-gradient-to-br from-primary/10 to-accent/10 border border-primary/20 rounded-xl p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-foreground flex items-center gap-2">
+              <Zap className="h-5 w-5 text-primary" />
+              Subscription & Credits
+            </h3>
+            <Link href="/billing">
+              <Button size="sm" variant="outline">
+                Manage Plan
+              </Button>
+            </Link>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-white/50 rounded-lg p-4">
+              <p className="text-sm text-muted-foreground mb-1">Available Credits</p>
+              <p className="text-2xl font-bold text-foreground">{userData.credits}</p>
+            </div>
+            <div className="bg-white/50 rounded-lg p-4">
+              <p className="text-sm text-muted-foreground mb-1">Current Plan</p>
+              <p className="text-lg font-semibold text-foreground">{formatPlanName(userData.subscriptionPlan)}</p>
+            </div>
+          </div>
+          
+          {userData.credits < 50 && (
+            <div className="mt-4 bg-orange-50 border border-orange-200 rounded-lg p-3">
+              <p className="text-sm text-orange-700">
+                You're running low on credits. <Link href="/billing" className="underline font-medium">Upgrade your plan</Link> to continue creating conversations.
+              </p>
+            </div>
+          )}
+        </div>
+
         <div className="bg-white border border-border rounded-xl space-y-8">
-          {/* Avatar Section */}
           <div className="border-b border-border p-8">
             <div className="flex items-center gap-6">
               <div className="h-20 w-20 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-4xl">
@@ -108,9 +163,7 @@ export default function ProfileClient({ userData }: { userData: UserData }) {
             </div>
           </div>
 
-          {/* Profile Info */}
           <div className="p-8 space-y-6">
-            {/* Name */}
             <div className="space-y-2">
               <label className="text-sm font-semibold text-foreground flex items-center gap-2">
                 <User className="h-4 w-4" />
@@ -127,7 +180,6 @@ export default function ProfileClient({ userData }: { userData: UserData }) {
               )}
             </div>
 
-            {/* Email */}
             <div className="space-y-2">
               <label className="text-sm font-semibold text-foreground flex items-center gap-2">
                 <Mail className="h-4 w-4" />
@@ -137,7 +189,6 @@ export default function ProfileClient({ userData }: { userData: UserData }) {
               <p className="text-xs text-muted-foreground">Email cannot be changed</p>
             </div>
 
-            {/* Bio */}
             <div className="space-y-2">
               <label className="text-sm font-semibold text-foreground">Bio</label>
               {isEditing ? (
@@ -152,7 +203,6 @@ export default function ProfileClient({ userData }: { userData: UserData }) {
               )}
             </div>
 
-            {/* Join Date */}
             <div className="space-y-2">
               <label className="text-sm font-semibold text-foreground flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
@@ -161,7 +211,6 @@ export default function ProfileClient({ userData }: { userData: UserData }) {
               <p className="text-foreground">{userData.joinDate}</p>
             </div>
 
-            {/* Password */}
             {isEditing && (
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-foreground">New Password (optional)</label>
@@ -187,7 +236,6 @@ export default function ProfileClient({ userData }: { userData: UserData }) {
               </div>
             )}
 
-            {/* Action Buttons */}
             <div className="flex gap-4 pt-6 border-t border-border">
               {isEditing ? (
                 <>
@@ -222,7 +270,6 @@ export default function ProfileClient({ userData }: { userData: UserData }) {
             </div>
           </div>
 
-          {/* Danger Zone */}
           <div className="border-t border-border p-8 space-y-4 bg-red-50/50">
             <h3 className="font-semibold text-foreground">Danger Zone</h3>
             <div className="space-y-3">
@@ -241,7 +288,57 @@ export default function ProfileClient({ userData }: { userData: UserData }) {
           </div>
         </div>
 
-        {/* Related Links */}
+        <div className="mt-6 bg-white border border-border rounded-xl">
+          <button
+            onClick={() => setShowBillingHistory(!showBillingHistory)}
+            className="w-full p-6 flex items-center justify-between hover:bg-gray-50 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <CreditCard className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold text-foreground">Billing History</h3>
+            </div>
+            <span className="text-muted-foreground">
+              {showBillingHistory ? '▼' : '▶'}
+            </span>
+          </button>
+          
+          {showBillingHistory && (
+            <div className="border-t border-border p-6 space-y-4">
+              {billingHistory.length > 0 ? (
+                billingHistory.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+                  >
+                    <div>
+                      <p className="font-medium text-foreground">{item.description}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {new Date(item.created_at).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        })}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-foreground">
+                        ${item.amount.toFixed(2)}
+                      </p>
+                      <p className="text-sm text-green-600">
+                        +{item.credits_added} credits
+                      </p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-center text-muted-foreground py-8">
+                  No billing history yet
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
         <div className="mt-12 bg-blue-50 border border-blue-200 rounded-lg p-6 space-y-4">
           <h3 className="font-semibold text-blue-900">Other Resources</h3>
           <div className="grid grid-cols-2 gap-3">
