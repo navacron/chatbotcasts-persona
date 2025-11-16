@@ -66,6 +66,9 @@ export default function Header() {
             <Link href="/guests" className="text-foreground hover:text-primary transition-colors">
               Guests
             </Link>
+            <Link href="/billing" className="text-foreground hover:text-primary transition-colors">
+              Pricing
+            </Link>
             {user && (
               <Link href="/dashboard" className="text-foreground hover:text-primary transition-colors">
                 Dashboard
@@ -128,6 +131,9 @@ export default function Header() {
             </Link>
             <Link href="/guests" className="block px-4 py-2 text-foreground hover:bg-secondary rounded">
               Browse Guests
+            </Link>
+            <Link href="/billing" className="block px-4 py-2 text-foreground hover:bg-secondary rounded">
+              Pricing
             </Link>
             {user && (
               <Link href="/dashboard" className="block px-4 py-2 text-foreground hover:bg-secondary rounded">

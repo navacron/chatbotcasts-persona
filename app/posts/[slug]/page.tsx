@@ -2,6 +2,8 @@ import { notFound } from 'next/navigation'
 import { Metadata } from 'next'
 import ConversationDisplay from '@/components/conversation-display'
 import { getConversationBySlug } from '@/lib/conversations'
+import Header from '@/components/header'
+import Footer from '@/components/footer'
 
 export const dynamic = 'force-dynamic'
 
@@ -34,12 +36,16 @@ export default async function PostPage({ params }: PageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <ConversationDisplay
-        conversation={data.conversation}
-        personas={data.personas}
-        user={data.user}
-      />
+    <div className="min-h-screen bg-white flex flex-col">
+      <Header />
+      <div className="flex-1">
+        <ConversationDisplay
+          conversation={data.conversation}
+          personas={data.personas}
+          user={data.user}
+        />
+      </div>
+      <Footer />
     </div>
   )
 }
