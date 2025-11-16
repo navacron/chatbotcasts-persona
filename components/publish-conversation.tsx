@@ -177,11 +177,11 @@ export default function PublishConversation({ conversationData, chatData }: Publ
         <div className="bg-white border border-green-300 rounded-lg p-4">
           <p className="text-sm text-muted-foreground mb-2">Your conversation URL:</p>
           <code className="text-sm font-mono text-foreground bg-muted px-3 py-1 rounded">
-            /c/{slug}
+            /posts/{slug}
           </code>
         </div>
         <div className="flex gap-4 justify-center pt-4">
-          <Button variant="outline" onClick={() => window.location.href = `/c/${slug}`}>
+          <Button variant="outline" onClick={() => window.location.href = `/posts/${slug}`}>
             View Conversation
           </Button>
           <Button onClick={() => window.location.href = '/create'}>
@@ -225,7 +225,7 @@ export default function PublishConversation({ conversationData, chatData }: Publ
             URL Slug
           </label>
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">/c/</span>
+            <span className="text-sm text-muted-foreground">/posts/</span>
             <Input
               placeholder="ai-ethics-three-perspectives"
               value={slug}
