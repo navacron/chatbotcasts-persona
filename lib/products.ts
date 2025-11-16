@@ -34,7 +34,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   {
     id: 'monthly',
     name: 'Monthly',
-    stripePriceId: 'price_XXXXXXXXXX', // TODO: Replace with your Stripe monthly price ID
+    stripePriceId: 'price_1SUCI6Re0RKUVeZ91Da3EcwL', // TODO: Replace with your Stripe monthly price ID
     price: 9.99,
     credits: 1000,
     period: 'month',
@@ -51,7 +51,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   {
     id: 'yearly',
     name: 'Yearly',
-    stripePriceId: 'price_YYYYYYYYYY', // TODO: Replace with your Stripe yearly price ID
+    stripePriceId: 'price_1SUCPURe0RKUVeZ9RuwoJjjC', // TODO: Replace with your Stripe yearly price ID
     price: 99.9,
     originalPrice: 119.88,
     credits: 12000,
