@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Search, Zap, Users, Share2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -9,6 +9,25 @@ import GuestCard from '@/components/guest-card'
 import Header from '@/components/header'
 import Footer from '@/components/footer'
 import Link from 'next/link'
+
+interface Category {
+  id: string
+  name: string
+  slug: string
+  description: string
+}
+
+interface Conversation {
+  id: string
+  title: string
+  description: string
+  slug: string
+  participants: string[]
+  views: number
+  author: string
+  createdAt: string
+  categoryId: string
+}
 
 const CATEGORIES = [
   { id: 'tech', name: 'Technology', color: 'from-blue-500 to-blue-600' },
@@ -19,44 +38,48 @@ const CATEGORIES = [
 
 const MOCK_CONVERSATIONS = [
   {
-    id: 1,
+    id: '1',
     title: 'AI Ethics Debate',
     description: 'Andrew Ng and Yann LeCun discuss the ethical implications of AI',
-    category: 'tech',
+    slug: 'ai-ethics-debate',
     participants: ['Andrew Ng', 'Yann LeCun'],
     views: 2400,
-    rating: 4.8,
     author: 'Alex Chen',
+    createdAt: '2023-10-01',
+    categoryId: 'tech',
   },
   {
-    id: 2,
+    id: '2',
     title: 'The Future of Work',
     description: 'Discussing remote work, automation, and human productivity',
-    category: 'business',
+    slug: 'the-future-of-work',
     participants: ['Satya Nadella', 'Tim Cook'],
     views: 1800,
-    rating: 4.6,
     author: 'Sarah Mitchell',
+    createdAt: '2023-09-25',
+    categoryId: 'business',
   },
   {
-    id: 3,
+    id: '3',
     title: 'Climate Change Solutions',
     description: 'Scientists discuss renewable energy and sustainability',
-    category: 'science',
+    slug: 'climate-change-solutions',
     participants: ['Neil deGrasse Tyson', 'Jane Goodall'],
     views: 3200,
-    rating: 4.9,
     author: 'Mike Johnson',
+    createdAt: '2023-10-05',
+    categoryId: 'science',
   },
   {
-    id: 4,
+    id: '4',
     title: 'Meaning and Purpose',
     description: 'Exploring existentialism and the meaning of life',
-    category: 'philosophy',
+    slug: 'meaning-and-purpose',
     participants: ['Bertrand Russell', 'Simone Weil'],
     views: 1500,
-    rating: 4.7,
     author: 'Emma Wilson',
+    createdAt: '2023-09-30',
+    categoryId: 'philosophy',
   },
 ]
 
@@ -83,13 +106,53 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'conversations' | 'guests'>('conversations')
+  const [categories, setCategories] = useState<Category[]>([])
+  const [loadingCategories, setLoadingCategories] = useState(true)
+  const [conversations, setConversations] = useState<Conversation[]>([])
+  const [loadingConversations, setLoadingConversations] = useState(true)
 
-  const filteredConversations = MOCK_CONVERSATIONS.filter((conv) => {
-    const matchesSearch = conv.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      conv.description.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesCategory = !selectedCategory || conv.category === selectedCategory
-    return matchesSearch && matchesCategory
-  })
+  useEffect(() => {
+    async function fetchCategories() {
+      try {
+        const response = await fetch('/api/categories')
+        const data = await response.json()
+        if (data.categories) {
+          setCategories(data.categories)
+        }
+      } catch (error) {
+        console.error('[v0] Error fetching categories:', error)
+      } finally {
+        setLoadingCategories(false)
+      }
+    }
+    fetchCategories()
+  }, [])
+
+  useEffect(() => {
+    async function fetchConversations() {
+      setLoadingConversations(true)
+      try {
+        const url = selectedCategory 
+          ? `/api/conversations?categoryId=${selectedCategory}`
+          : '/api/conversations'
+        const response = await fetch(url)
+        const data = await response.json()
+        if (data.conversations) {
+          setConversations(data.conversations)
+        }
+      } catch (error) {
+        console.error('[v0] Error fetching conversations:', error)
+      } finally {
+        setLoadingConversations(false)
+      }
+    }
+    fetchConversations()
+  }, [selectedCategory])
+
+  const filteredConversations = conversations.filter((conv) =>
+    conv.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    conv.description.toLowerCase().includes(searchQuery.toLowerCase())
+  )
 
   const filteredGuests = MOCK_GUESTS.filter((guest) =>
     guest.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -219,19 +282,23 @@ export default function Home() {
               >
                 All Categories
               </button>
-              {CATEGORIES.map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => setSelectedCategory(cat.id)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                    selectedCategory === cat.id
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-secondary text-foreground hover:bg-secondary/80'
-                  }`}
-                >
-                  {cat.name}
-                </button>
-              ))}
+              {loadingCategories ? (
+                <div className="text-sm text-muted-foreground">Loading categories...</div>
+              ) : (
+                categories.map((cat) => (
+                  <button
+                    key={cat.id}
+                    onClick={() => setSelectedCategory(cat.id)}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                      selectedCategory === cat.id
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-secondary text-foreground hover:bg-secondary/80'
+                    }`}
+                  >
+                    {cat.name}
+                  </button>
+                ))
+              )}
             </div>
           )}
         </div>
@@ -241,20 +308,26 @@ export default function Home() {
           <div className="space-y-6">
             <h2 className="text-2xl font-bold text-foreground">
               {selectedCategory
-                ? CATEGORIES.find((c) => c.id === selectedCategory)?.name
+                ? categories.find((c) => c.id === selectedCategory)?.name
                 : 'Popular Conversations'}
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredConversations.length > 0 ? (
-                filteredConversations.map((conv) => (
-                  <ConversationCard key={conv.id} conversation={conv} />
-                ))
-              ) : (
-                <div className="col-span-full text-center py-12">
-                  <p className="text-muted-foreground">No conversations found matching your search.</p>
-                </div>
-              )}
-            </div>
+            {loadingConversations ? (
+              <div className="col-span-full text-center py-12">
+                <p className="text-muted-foreground">Loading conversations...</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredConversations.length > 0 ? (
+                  filteredConversations.map((conv) => (
+                    <ConversationCard key={conv.id} conversation={conv} />
+                  ))
+                ) : (
+                  <div className="col-span-full text-center py-12">
+                    <p className="text-muted-foreground">No conversations found matching your search.</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         ) : (
           <div className="space-y-6">
