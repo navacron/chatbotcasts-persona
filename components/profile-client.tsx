@@ -95,6 +95,13 @@ export default function ProfileClient({ userData }: { userData: UserData }) {
     return plan
   }
 
+  const getPlanBadgeStyle = (plan: string) => {
+    if (plan === 'free') return 'bg-gray-100 text-gray-700 border-gray-300'
+    if (plan === 'monthly') return 'bg-blue-100 text-blue-700 border-blue-300'
+    if (plan === 'yearly') return 'bg-purple-100 text-purple-700 border-purple-300'
+    return 'bg-gray-100 text-gray-700 border-gray-300'
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -137,7 +144,16 @@ export default function ProfileClient({ userData }: { userData: UserData }) {
             </div>
             <div className="bg-white/50 rounded-lg p-4">
               <p className="text-sm text-muted-foreground mb-1">Current Plan</p>
-              <p className="text-lg font-semibold text-foreground">{formatPlanName(userData.subscriptionPlan)}</p>
+              <div className="flex items-center gap-2 mt-1">
+                <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold border ${getPlanBadgeStyle(userData.subscriptionPlan)}`}>
+                  {formatPlanName(userData.subscriptionPlan)}
+                </span>
+              </div>
+              {userData.subscriptionPlan !== 'free' && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Status: <span className="capitalize">{userData.subscriptionStatus}</span>
+                </p>
+              )}
             </div>
           </div>
           
