@@ -42,10 +42,20 @@ export async function POST(req: NextRequest) {
         const credits = planId === 'yearly' ? 12000 : 1000
         const amount = (session.amount_total || 0) / 100
 
+        const { error: creditsError } = await supabase.rpc('increment_credits', {
+          user_id: userId,
+          amount: credits,
+        })
+
+        if (creditsError) {
+          console.error('[v0] Error incrementing credits:', creditsError)
+        } else {
+          console.log('[v0] Successfully added', credits, 'credits to user', userId)
+        }
+
         const { error: updateError } = await supabase
           .from('users')
           .update({
-            credits: supabase.rpc('increment', { x: credits }),
             stripe_customer_id: session.customer as string,
             stripe_subscription_id: session.subscription as string,
             subscription_plan: planId,
@@ -54,8 +64,7 @@ export async function POST(req: NextRequest) {
           .eq('id', userId)
 
         if (updateError) {
-          console.error('[v0] Error updating user:', updateError)
-          break
+          console.error('[v0] Error updating user subscription:', updateError)
         }
 
         const { error: billingError } = await supabase
@@ -79,7 +88,6 @@ export async function POST(req: NextRequest) {
           console.error('[v0] Error recording billing history:', billingError)
         }
 
-        console.log('[v0] Successfully added', credits, 'credits to user', userId)
         break
       }
 
