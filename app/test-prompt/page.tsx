@@ -1,11 +1,11 @@
 import Header from "@/components/header"
-import TestPromptClient from "@/components/test-prompt-client"
+import PasswordProtectedTestPrompt from "@/components/password-protected-test-prompt"
 
 export default async function TestPromptPage() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <TestPromptClient />
+      <PasswordProtectedTestPrompt />
     </div>
   )
 }

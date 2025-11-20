@@ -1,34 +1,49 @@
-import { streamText, convertToModelMessages, type UIMessage } from "ai"
-import { createGateway } from "@ai-sdk/gateway"
+import { generateText } from "ai"
+import { createPerplexity } from "@ai-sdk/perplexity"
 
 export const maxDuration = 30
 
 export async function POST(req: Request) {
   try {
-    const { messages }: { messages: UIMessage[] } = await req.json()
+    const body = await req.json()
+    console.log("[v0] Received body:", JSON.stringify(body, null, 2))
 
-    if (!messages || messages.length === 0) {
-      return Response.json({ error: "Messages are required" }, { status: 400 })
+    const messages = body.messages
+
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      console.error("[v0] Invalid messages:", messages)
+      return Response.json({ error: "Messages must be a non-empty array" }, { status: 400 })
     }
 
-    const gateway = createGateway({
-      apiKey: process.env.AI_GATEWAY_API_KEY,
-      baseURL: "https://ai-gateway.vercel.sh/v1/ai",
+    const perplexity = createPerplexity({
+      apiKey: process.env.PERPLEXITY_API_KEY,
     })
 
-    console.log("[v0] Calling Perplexity Sonar via AI Gateway with messages:", messages)
+    const coreMessages = messages.map((msg: any) => ({
+      role: msg.role,
+      content: msg.content,
+    }))
 
-    const prompt = convertToModelMessages(messages)
+    console.log("[v0] Perplexity Request:")
+    console.log("[v0] - Message count:", coreMessages.length)
+    console.log("[v0] - Core messages:", JSON.stringify(coreMessages, null, 2))
 
-    const result = streamText({
-      model: gateway("perplexity/sonar-pro"),
-      prompt,
-      abortSignal: req.signal,
-      maxOutputTokens: 2000,
+    const result = await generateText({
+      model: perplexity("sonar"),
+      messages: coreMessages,
+      maxTokens: 2000,
       temperature: 0.7,
     })
 
-    return result.toUIMessageStreamResponse()
+    console.log("[v0] Perplexity Response:")
+    console.log("[v0] - Text length:", result.text.length)
+    console.log("[v0] - Response:", result.text)
+
+    return Response.json({
+      text: result.text,
+      usage: result.usage,
+      finishReason: result.finishReason,
+    })
   } catch (error) {
     console.error("[v0] Perplexity API error:", error)
     return Response.json(
