@@ -9,6 +9,8 @@
     "start": "next start"
   },
   "dependencies": {
+    "@ai-sdk/gateway": "latest",
+    "@ai-sdk/perplexity": "2.0.19",
     "@auth0/nextjs-auth0": "4.12.1",
     "@hookform/resolvers": "^3.10.0",
     "@radix-ui/react-accordion": "1.2.2",

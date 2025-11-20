@@ -1,4 +1,5 @@
 import { streamText, convertToModelMessages, type UIMessage } from "ai"
+import { createGateway } from "@ai-sdk/gateway"
 
 export const maxDuration = 30
 
@@ -10,12 +11,17 @@ export async function POST(req: Request) {
       return Response.json({ error: "Messages are required" }, { status: 400 })
     }
 
-    console.log("[v0] Calling Perplexity Sonar with messages:", messages)
+    const gateway = createGateway({
+      apiKey: process.env.AI_GATEWAY_API_KEY,
+      baseURL: "https://ai-gateway.vercel.sh/v1/ai",
+    })
+
+    console.log("[v0] Calling Perplexity Sonar via AI Gateway with messages:", messages)
 
     const prompt = convertToModelMessages(messages)
 
     const result = streamText({
-      model: "perplexity/sonar-pro",
+      model: gateway("perplexity/sonar-pro"),
       prompt,
       abortSignal: req.signal,
       maxOutputTokens: 2000,
@@ -25,6 +31,12 @@ export async function POST(req: Request) {
     return result.toUIMessageStreamResponse()
   } catch (error) {
     console.error("[v0] Perplexity API error:", error)
-    return Response.json({ error: "Failed to generate response" }, { status: 500 })
+    return Response.json(
+      {
+        error: "Failed to generate response",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
+    )
   }
 }

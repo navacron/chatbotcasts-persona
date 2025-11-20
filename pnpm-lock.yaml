@@ -8,6 +8,12 @@ importers:
 
   .:
     dependencies:
+      '@ai-sdk/gateway':
+        specifier: latest
+        version: 2.0.12(zod@3.25.76)
+      '@ai-sdk/perplexity':
+        specifier: 2.0.19
+        version: 2.0.19(zod@3.25.76)
       '@auth0/nextjs-auth0':
         specifier: 4.12.1
         version: 4.12.1(next@16.0.3(@opentelemetry/api@1.9.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -218,6 +224,12 @@ packages:
 
   '@ai-sdk/gateway@2.0.12':
     resolution: {integrity: sha512-W+cB1sOWvPcz9qiIsNtD+HxUrBUva2vWv2K1EFukuImX+HA0uZx3EyyOjhYQ9gtf/teqEG80M6OvJ7xx/VLV2A==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4.1.8
+
+  '@ai-sdk/perplexity@2.0.19':
+    resolution: {integrity: sha512-DE+BBpS6ciSY4C1tA8UTtWp10j2JnLE/wsY/3XqRglaZPM01N6n6LCfuNZui2GqnkHl0bfEHWZqA1OaUOYSIOg==}
     engines: {node: '>=18'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -2101,6 +2113,12 @@ snapshots:
       '@ai-sdk/provider': 2.0.0
       '@ai-sdk/provider-utils': 3.0.17(zod@3.25.76)
       '@vercel/oidc': 3.0.5
+      zod: 3.25.76
+
+  '@ai-sdk/perplexity@2.0.19(zod@3.25.76)':
+    dependencies:
+      '@ai-sdk/provider': 2.0.0
+      '@ai-sdk/provider-utils': 3.0.17(zod@3.25.76)
       zod: 3.25.76
 
   '@ai-sdk/provider-utils@3.0.17(zod@3.25.76)':
