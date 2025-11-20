@@ -1,13 +1,13 @@
-'use client'
+"use client"
 
-import { useState, useEffect } from 'react'
-import { Menu, X, LogOut, User, Settings } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import Link from 'next/link'
-import Image from 'next/image'
-import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
-import type { User as SupabaseUser } from '@supabase/supabase-js'
+import { useState, useEffect } from "react"
+import { Menu, X, LogOut, Settings } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
+import Image from "next/image"
+import { createClient } from "@/lib/supabase/client"
+import { useRouter } from "next/navigation"
+import type { User as SupabaseUser } from "@supabase/supabase-js"
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -17,7 +17,7 @@ export default function Header() {
 
   useEffect(() => {
     const supabase = createClient()
-    
+
     // Get initial user
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUser(user)
@@ -25,7 +25,9 @@ export default function Header() {
     })
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
     })
 
@@ -35,7 +37,7 @@ export default function Header() {
   const handleSignOut = async () => {
     const supabase = createClient()
     await supabase.auth.signOut()
-    router.push('/')
+    router.push("/")
     router.refresh()
   }
 
@@ -45,13 +47,7 @@ export default function Header() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
-            <Image 
-              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/ChatBotCastsSm-uw5DkA6iCVqNZD2RBZAsafFdLnZfyQ.webp"
-              alt="ChatBotCasts"
-              width={32}
-              height={32}
-              className="h-8 w-8"
-            />
+            <Image src="/images/chatbotcastssm.webp" alt="ChatBotCasts" width={32} height={32} className="h-8 w-8" />
             <span className="font-bold text-lg text-foreground">ChatBotCasts</span>
           </Link>
 
@@ -70,9 +66,14 @@ export default function Header() {
               Pricing
             </Link>
             {user && (
-              <Link href="/dashboard" className="text-foreground hover:text-primary transition-colors">
-                Dashboard
-              </Link>
+              <>
+                <Link href="/dashboard" className="text-foreground hover:text-primary transition-colors">
+                  Dashboard
+                </Link>
+                <Link href="/test-prompt" className="text-foreground hover:text-primary transition-colors">
+                  Test Prompt
+                </Link>
+              </>
             )}
           </nav>
 
@@ -103,15 +104,8 @@ export default function Header() {
           </div>
 
           {/* Mobile Menu */}
-          <button
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="md:hidden p-2"
-          >
-            {isMenuOpen ? (
-              <X className="h-5 w-5" />
-            ) : (
-              <Menu className="h-5 w-5" />
-            )}
+          <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="md:hidden p-2">
+            {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
         </div>
 
@@ -131,9 +125,14 @@ export default function Header() {
               Pricing
             </Link>
             {user && (
-              <Link href="/dashboard" className="block px-4 py-2 text-foreground hover:bg-secondary rounded">
-                Dashboard
-              </Link>
+              <>
+                <Link href="/dashboard" className="block px-4 py-2 text-foreground hover:bg-secondary rounded">
+                  Dashboard
+                </Link>
+                <Link href="/test-prompt" className="block px-4 py-2 text-foreground hover:bg-secondary rounded">
+                  Test Prompt
+                </Link>
+              </>
             )}
             <div className="border-t border-border pt-2">
               {user ? (
