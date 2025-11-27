@@ -5,12 +5,13 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Send, Trash2, Sparkles, Loader2, Code } from "lucide-react"
+import { Send, Trash2, Sparkles, Loader2, Code, ExternalLink } from "lucide-react"
 
 interface Message {
   id: string
   role: "user" | "assistant"
   content: string
+  citations?: string[]
   createdAt: Date
 }
 
@@ -21,6 +22,7 @@ interface DebugInfo {
   }
   response: {
     text: string
+    citations?: string[]
     timestamp: string
     usage?: any
     finishReason?: string
@@ -85,6 +87,7 @@ export default function TestPromptClient() {
         id: (Date.now() + 1).toString(),
         role: "assistant",
         content: data.text,
+        citations: data.citations || [],
         createdAt: new Date(),
       }
 
@@ -94,6 +97,7 @@ export default function TestPromptClient() {
         request: prev!.request,
         response: {
           text: data.text,
+          citations: data.citations || [],
           timestamp: new Date().toISOString(),
           usage: data.usage,
           finishReason: data.finishReason,
@@ -177,6 +181,25 @@ export default function TestPromptClient() {
                             {message.role === "user" ? "You" : "Perplexity Sonar"}
                           </p>
                           <div className="whitespace-pre-wrap text-sm">{message.content}</div>
+                          {message.citations && message.citations.length > 0 && (
+                            <div className="mt-3 pt-3 border-t border-border">
+                              <p className="text-xs font-medium mb-2 text-muted-foreground">Sources:</p>
+                              <div className="space-y-1">
+                                {message.citations.map((citation, idx) => (
+                                  <a
+                                    key={idx}
+                                    href={citation}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-1 text-xs text-primary hover:underline"
+                                  >
+                                    <ExternalLink className="h-3 w-3" />
+                                    {citation}
+                                  </a>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))
@@ -271,6 +294,7 @@ export default function TestPromptClient() {
                                 messages: debugInfo.request.messages.map((m) => ({
                                   role: m.role,
                                   content: m.content,
+                                  ...(m.citations && m.citations.length > 0 ? { citations: m.citations } : {}),
                                 })),
                               },
                               null,
@@ -288,6 +312,7 @@ export default function TestPromptClient() {
                               {
                                 timestamp: debugInfo.response.timestamp,
                                 textLength: debugInfo.response.text.length,
+                                citations: debugInfo.response.citations || [],
                                 usage: debugInfo.response.usage,
                                 finishReason: debugInfo.response.finishReason,
                                 fullText: debugInfo.response.text,

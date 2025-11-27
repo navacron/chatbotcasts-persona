@@ -38,9 +38,18 @@ export async function POST(req: Request) {
     console.log("[v0] Perplexity Response:")
     console.log("[v0] - Text length:", result.text.length)
     console.log("[v0] - Response:", result.text)
+    console.log("[v0] - Full result object:", JSON.stringify(result, null, 2))
+
+    const responseBody = (result.response as any)?.body
+    const fullContent = responseBody?.choices?.[0]?.message?.content || result.text
+    const citations = responseBody?.citations || []
+
+    console.log("[v0] - Full content with citations:", fullContent)
+    console.log("[v0] - Citations:", citations)
 
     return Response.json({
-      text: result.text,
+      text: fullContent,
+      citations: citations,
       usage: result.usage,
       finishReason: result.finishReason,
     })
