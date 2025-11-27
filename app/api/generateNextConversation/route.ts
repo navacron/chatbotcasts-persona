@@ -61,7 +61,7 @@ Output your answer as ${currentPersona.name} would respond. You will be discussi
 
 ${conversationContext ? `Here is the conversation so far:\n\n${conversationContext}\n\n` : ""}
 
-Continue the conversation naturally as ${currentPersona.name}.`
+Output your answer as <${currentPersona.name}> response.`
 
     console.log("[v0] System prompt:", systemPrompt)
 
