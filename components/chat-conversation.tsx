@@ -143,11 +143,13 @@ export default function ChatConversation({ data, onPublish }: ChatConversationPr
         currentPersonaId: speakerToUse,
         allPersonaIds: personas,
         title: data?.topic || "General Discussion",
-        messages: messages.map((msg) => ({
+        messages: messages.map((msg, index) => ({
+          id: msg.id || index + 1,
           personaId: msg.persona,
           role: msg.name, // Include persona name as role
           content: msg.message,
           citations: msg.citations || [],
+          timestamp: msg.timestamp ? new Date(msg.timestamp).toISOString() : new Date().toISOString(),
         })),
       }
 

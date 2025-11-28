@@ -154,6 +154,24 @@ export default function PublishConversation({ conversationData, chatData }: Publ
     setError(null)
 
     try {
+      const formattedMessages = (chatData?.messages || []).map((msg: any, index: number) => ({
+        id: msg.id || index + 1,
+        role: msg.name,
+        content: msg.message,
+        personaId: msg.persona,
+        citations: msg.citations || [],
+        timestamp: msg.timestamp || new Date().toISOString(),
+      }))
+
+      const dataToSave = {
+        title: title,
+        content: description || "", // Summary/description
+        slug: slug,
+        allPersonaIds: chatData?.personas || [],
+        currentPersonaId: chatData?.personas?.[0] || null,
+        messages: formattedMessages,
+      }
+
       const response = await fetch("/api/addUpdateConversation", {
         method: "POST",
         headers: {
@@ -164,13 +182,7 @@ export default function PublishConversation({ conversationData, chatData }: Publ
           description,
           slug,
           topic: chatData?.topic || conversationData?.topic || "General Discussion",
-          data: {
-            ...conversationData,
-            messages: chatData?.messages || [],
-            personas: chatData?.personas || [],
-            turnMode: chatData?.turnMode,
-            numTurns: chatData?.numTurns,
-          },
+          data: dataToSave,
           isPublic,
           personaIds: chatData?.personas || [],
           categoryId: selectedCategoryId,
