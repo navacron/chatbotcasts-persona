@@ -303,7 +303,6 @@ export default function ChatConversation({ data, onPublish }: ChatConversationPr
                           currentPersonaId: debugInfo.request.currentPersonaId,
                           allPersonaIds: debugInfo.request.allPersonaIds,
                           title: debugInfo.request.title,
-                          messagesCount: debugInfo.request.messages?.length || 0,
                           messages: debugInfo.request.messages,
                         },
                         null,
