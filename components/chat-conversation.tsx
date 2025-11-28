@@ -48,8 +48,14 @@ export default function ChatConversation({ data, onPublish }: ChatConversationPr
     console.log("[v0] ChatConversation received data:", data)
     if (data?.messages && Array.isArray(data.messages)) {
       return data.messages.map((msg: any, index: number) => ({
-        ...msg,
         id: msg.id || index + 1,
+        // Support both formats: new (personaId) and old (persona)
+        persona: msg.personaId || msg.persona,
+        // Support both formats: new (role) and old (name)
+        name: msg.role || msg.name,
+        // Support both formats: new (content) and old (message)
+        message: msg.content || msg.message,
+        citations: msg.citations || [],
         timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
       }))
     }
