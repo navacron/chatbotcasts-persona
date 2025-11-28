@@ -142,12 +142,13 @@ export default function ChatConversation({ data, onPublish }: ChatConversationPr
       const requestPayload = {
         currentPersonaId: speakerToUse,
         allPersonaIds: personas,
-        chatHistory: messages.map((msg) => ({
+        title: data?.topic || "General Discussion",
+        messages: messages.map((msg) => ({
           personaId: msg.persona,
-          message: msg.message,
-          timestamp: msg.timestamp,
+          role: msg.name, // Include persona name as role
+          content: msg.message,
+          citations: msg.citations || [],
         })),
-        topic: data?.topic || "General Discussion",
       }
 
       setDebugInfo({
@@ -202,7 +203,7 @@ export default function ChatConversation({ data, onPublish }: ChatConversationPr
         id: maxId + 1,
         persona: speakerToUse,
         name: personaDetail.name,
-        message: result.message,
+        message: result.content, // API now returns 'content' instead of 'message'
         citations: result.citations || [],
         timestamp: new Date(result.timestamp),
       }
@@ -301,9 +302,9 @@ export default function ChatConversation({ data, onPublish }: ChatConversationPr
                           timestamp: debugInfo.request.timestamp,
                           currentPersonaId: debugInfo.request.currentPersonaId,
                           allPersonaIds: debugInfo.request.allPersonaIds,
-                          topic: debugInfo.request.topic,
-                          chatHistoryLength: debugInfo.request.chatHistory?.length || 0,
-                          chatHistory: debugInfo.request.chatHistory,
+                          title: debugInfo.request.title,
+                          messagesCount: debugInfo.request.messages?.length || 0,
+                          messages: debugInfo.request.messages,
                         },
                         null,
                         2,

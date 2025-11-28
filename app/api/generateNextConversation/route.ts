@@ -9,16 +9,14 @@ export async function POST(request: Request) {
   try {
     const supabase = await createClient()
 
-    // Authentication will be checked when publishing, not when generating
-
     const body = await request.json()
-    const { currentPersonaId, allPersonaIds, chatHistory, topic } = body
+    const { currentPersonaId, allPersonaIds, messages, title } = body
 
     console.log("[v0] Generate conversation request:", {
       currentPersonaId,
       allPersonaIds,
-      historyLength: chatHistory?.length || 0,
-      topic,
+      messagesLength: messages?.length || 0,
+      title,
     })
 
     // Validate input
@@ -41,12 +39,11 @@ export async function POST(request: Request) {
     }
 
     let conversationContext = ""
-    if (chatHistory && chatHistory.length > 0) {
-      conversationContext = chatHistory
+    if (messages && messages.length > 0) {
+      conversationContext = messages
         .map((msg: any) => {
-          const persona = personas.find((p) => p.id === msg.personaId)
-          const personaName = persona?.name || "Unknown"
-          return `${personaName}: ${msg.message}`
+          const personaName = msg.role || "Unknown"
+          return `${personaName}: ${msg.content}`
         })
         .join("\n\n")
     }
@@ -57,7 +54,7 @@ export async function POST(request: Request) {
 
 You are currently part of a podcast, and answer the questions as if you are the persona in the role. Use the context of the chat to continue the conversation naturally.
 
-Output your answer as ${currentPersona.name} would respond. You will be discussing the topic of <topic>${topic}</topic>.
+Output your answer as ${currentPersona.name} would respond. You will be discussing the topic of <topic>${title}</topic>.
 
 ${conversationContext ? `Here is the conversation so far:\n\n${conversationContext}\n\n` : ""}
 
@@ -89,10 +86,11 @@ Output your answer as <${currentPersona.name}> response.`
 
     return NextResponse.json({
       success: true,
-      message: fullContent,
+      content: fullContent,
       citations: citations,
       personaId: currentPersonaId,
       personaName: currentPersona.name,
+      role: currentPersona.name,
       timestamp: new Date().toISOString(),
     })
   } catch (error) {
