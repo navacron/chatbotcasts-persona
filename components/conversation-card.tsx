@@ -1,6 +1,7 @@
-import { Star, Eye, Users } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import Link from 'next/link'
+import { Eye, Users } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
+import Image from "next/image"
 
 interface ConversationCardProps {
   conversation: {
@@ -11,6 +12,7 @@ interface ConversationCardProps {
     participants: string[]
     views: number
     author: string
+    featureImage?: string | null
   }
 }
 
@@ -18,15 +20,23 @@ export default function ConversationCard({ conversation }: ConversationCardProps
   return (
     <Link href={`/posts/${conversation.slug}`} className="block">
       <div className="bg-white border border-border rounded-lg overflow-hidden hover:shadow-lg transition-shadow h-full">
+        {conversation.featureImage && (
+          <div className="relative w-full h-48 bg-muted">
+            <Image
+              src={conversation.featureImage || "/placeholder.svg"}
+              alt={conversation.title}
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            />
+          </div>
+        )}
+
         {/* Card Content */}
         <div className="p-6 space-y-4">
           <div className="space-y-2">
-            <h3 className="font-semibold text-lg text-foreground line-clamp-2">
-              {conversation.title}
-            </h3>
-            <p className="text-sm text-muted-foreground line-clamp-2">
-              {conversation.description}
-            </p>
+            <h3 className="font-semibold text-lg text-foreground line-clamp-2">{conversation.title}</h3>
+            <p className="text-sm text-muted-foreground line-clamp-2">{conversation.description}</p>
           </div>
 
           {/* Participants */}
