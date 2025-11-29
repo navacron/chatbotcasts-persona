@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect } from "react"
 import { Search } from "lucide-react"
 import { Input } from "@/components/ui/input"
@@ -183,6 +185,13 @@ export default function Home() {
       persona.prompt?.toLowerCase().includes(searchQuery.toLowerCase()),
   )
 
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (searchQuery.trim()) {
+      window.location.href = `/search?q=${encodeURIComponent(searchQuery.trim())}`
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header />
@@ -218,15 +227,22 @@ export default function Home() {
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-12 flex-1">
         {/* Search and Filters */}
         <div className="space-y-6 mb-12">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <Input
-              placeholder={activeTab === "conversations" ? "Search conversations..." : "Search guests..."}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 h-11 bg-white border-border"
-            />
-          </div>
+          <form onSubmit={handleSearch}>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input
+                  placeholder={activeTab === "conversations" ? "Search conversations..." : "Search guests..."}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 h-11 bg-white border-border"
+                />
+              </div>
+              <Button type="submit" className="bg-gradient-to-r from-primary to-accent hover:opacity-90">
+                Search
+              </Button>
+            </div>
+          </form>
 
           {/* Tabs */}
           <div className="flex gap-2 border-b border-border">
