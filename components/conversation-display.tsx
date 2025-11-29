@@ -8,6 +8,7 @@ import { Clock, Eye, User, MessageSquarePlus, ExternalLink } from "lucide-react"
 import { useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 
 interface Message {
   id: number
@@ -29,6 +30,7 @@ interface ConversationData {
   title: string
   description?: string
   topic?: string
+  feature_image?: string | null
   data: {
     title?: string
     content?: string
@@ -106,6 +108,19 @@ export default function ConversationDisplay({ conversation, personas, user }: Co
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-4xl font-bold mb-4 text-balance">{conversation.title}</h1>
+
+        {conversation.feature_image && (
+          <div className="mb-6 rounded-lg overflow-hidden">
+            <Image
+              src={conversation.feature_image || "/placeholder.svg"}
+              alt={conversation.title}
+              width={896}
+              height={504}
+              className="w-full h-auto"
+              priority
+            />
+          </div>
+        )}
 
         {conversation.description && (
           <div className="bg-muted/50 rounded-lg p-6 mb-6">

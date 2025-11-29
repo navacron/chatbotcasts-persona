@@ -7,8 +7,6 @@
 ALTER TABLE conversations 
 ADD COLUMN IF NOT EXISTS feature_image TEXT DEFAULT NULL;
 
-RAISE NOTICE 'Added feature_image column to conversations table';
-
 -- Step 2: Update feature_image from legacy data in mongo_posts_raw
 -- For records that were migrated from MongoDB, extract feature_image from the JSON data
 UPDATE conversations c
@@ -18,8 +16,6 @@ WHERE
   c.slug = (m.data->>'slug')
   AND m.data->>'feature_image' IS NOT NULL
   AND m.data->>'feature_image' != '';
-
-RAISE NOTICE 'Updated feature_image for migrated conversations from mongo_posts_raw';
 
 -- Step 3: Verify the migration
 DO $$
