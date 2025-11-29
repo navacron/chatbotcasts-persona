@@ -65,7 +65,8 @@ export async function getConversationBySlug(slug: string) {
       .from("conversations")
       .select(`
         *,
-        users!conversations_user_id_fkey(display_name)
+        users!conversations_user_id_fkey(display_name),
+        category!conversations_category_id_fkey(id, name, slug)
       `)
       .eq("slug", slug)
       .maybeSingle()
@@ -127,6 +128,7 @@ export async function getConversationBySlug(slug: string) {
       conversation,
       personas: personas || [],
       user: (conversation as any).users,
+      category: (conversation as any).category,
     }
   } catch (error) {
     console.error("[v0] Unexpected error in getConversationBySlug:", error)

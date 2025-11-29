@@ -10,10 +10,11 @@ import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import PlayAllControl from "@/components/play-all-control"
+import Link from "next/link"
 
 interface Message {
   id: number
-  role: string // Persona name
+  role: string
   content: string
   personaId: string
   citations: string[]
@@ -25,6 +26,12 @@ interface Persona {
   id: string
   name: string
   prompt?: string
+}
+
+interface Category {
+  id: string
+  name: string
+  slug: string
 }
 
 interface ConversationData {
@@ -50,9 +57,10 @@ interface ConversationDisplayProps {
   conversation: ConversationData
   personas: Persona[]
   user: { display_name?: string; email?: string } | null
+  category?: Category | null
 }
 
-export default function ConversationDisplay({ conversation, personas, user }: ConversationDisplayProps) {
+export default function ConversationDisplay({ conversation, personas, user, category }: ConversationDisplayProps) {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const router = useRouter()
 
@@ -71,7 +79,6 @@ export default function ConversationDisplay({ conversation, personas, user }: Co
   const personaMap = new Map(personas.map((p) => [p.id, p]))
   const hasAudio = messages.some((msg) => msg.audio)
 
-  // Helper to get persona avatar color
   const getPersonaColor = (personaId: string) => {
     const persona = personaMap.get(personaId)
     if (!persona) return "bg-gray-500"
@@ -81,7 +88,6 @@ export default function ConversationDisplay({ conversation, personas, user }: Co
     return colors[index]
   }
 
-  // Helper to get persona initials
   const getPersonaInitials = (personaId: string) => {
     const persona = personaMap.get(personaId)
     if (!persona) return "?"
@@ -106,11 +112,42 @@ export default function ConversationDisplay({ conversation, personas, user }: Co
     router.push(`/create?conversationId=${conversation.id}`)
   }
 
+  const getFirstYouTubeVideoId = () => {
+    for (const message of messages) {
+      if (message.citations && message.citations.length > 0) {
+        for (const citation of message.citations) {
+          const match = citation.match(
+            /(?:youtube\.com\/(?:[^/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
+          )
+          if (match && match[1]) {
+            return match[1]
+          }
+        }
+      }
+    }
+    return null
+  }
+
+  const youtubeVideoId = getFirstYouTubeVideoId()
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-4xl font-bold mb-4 text-balance">{conversation.title}</h1>
+
+        {category && (
+          <div className="mb-4">
+            <Link
+              href={`/category/${category.slug}`}
+              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
+            >
+              <Badge variant="secondary" className="px-3 py-1">
+                {category.name}
+              </Badge>
+            </Link>
+          </div>
+        )}
 
         {conversation.feature_image && (
           <div className="mb-6 rounded-lg overflow-hidden">
@@ -125,12 +162,6 @@ export default function ConversationDisplay({ conversation, personas, user }: Co
           </div>
         )}
 
-        {hasAudio && (
-          <div className="mb-6">
-            <PlayAllControl messages={messages} />
-          </div>
-        )}
-
         {conversation.description && (
           <div className="bg-muted/50 rounded-lg p-6 mb-6">
             <div
@@ -140,11 +171,31 @@ export default function ConversationDisplay({ conversation, personas, user }: Co
           </div>
         )}
 
+        {youtubeVideoId && (
+          <div className="mb-8">
+            <div className="relative w-full rounded-lg overflow-hidden" style={{ paddingBottom: "56.25%" }}>
+              <iframe
+                className="absolute top-0 left-0 w-full h-full"
+                src={`https://www.youtube.com/embed/${youtubeVideoId}`}
+                title="YouTube video player"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          </div>
+        )}
+
+        {hasAudio && (
+          <div className="mb-6">
+            <PlayAllControl messages={messages} />
+          </div>
+        )}
+
         {/* Meta information */}
         <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mb-6">
           <div className="flex items-center gap-2">
             <User className="h-4 w-4" />
-            <span>Anonymous</span>
+            <span>{user?.display_name || "Anonymous"}</span>
           </div>
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4" />
