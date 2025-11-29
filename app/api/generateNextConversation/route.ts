@@ -58,7 +58,7 @@ Output your answer as ${currentPersona.name} would respond. You will be discussi
 
 ${conversationContext ? `Here is the conversation so far:\n\n${conversationContext}\n\n` : ""}
 
-Output your answer as <${currentPersona.name}> response.`
+Answer as a normal human would respond and dont include special characters or markdown.`
 
     console.log("[v0] System prompt:", systemPrompt)
 
