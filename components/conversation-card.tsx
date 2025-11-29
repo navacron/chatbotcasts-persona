@@ -36,7 +36,10 @@ export default function ConversationCard({ conversation }: ConversationCardProps
         <div className="p-6 space-y-4">
           <div className="space-y-2">
             <h3 className="font-semibold text-lg text-foreground line-clamp-2">{conversation.title}</h3>
-            <p className="text-sm text-muted-foreground line-clamp-2">{conversation.description}</p>
+            <div
+              className="text-sm text-muted-foreground line-clamp-2"
+              dangerouslySetInnerHTML={{ __html: conversation.description }}
+            />
           </div>
 
           {/* Participants */}

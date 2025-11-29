@@ -154,8 +154,7 @@ export default function Home() {
 
       setLoadingPersonas(true)
       try {
-        const url = searchQuery ? `/api/personas?q=${encodeURIComponent(searchQuery)}` : "/api/personas"
-        const response = await fetch(url)
+        const response = await fetch("/api/personas")
         const data = await response.json()
 
         if (response.ok) {
@@ -171,19 +170,7 @@ export default function Home() {
     if (activeTab === "guests") {
       fetchPersonas()
     }
-  }, [activeTab, searchQuery])
-
-  const filteredConversations = conversations.filter(
-    (conv) =>
-      conv.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      conv.description.toLowerCase().includes(searchQuery.toLowerCase()),
-  )
-
-  const filteredGuests = personas.filter(
-    (persona) =>
-      persona.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      persona.prompt?.toLowerCase().includes(searchQuery.toLowerCase()),
-  )
+  }, [activeTab])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -314,11 +301,11 @@ export default function Home() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredConversations.length > 0 ? (
-                  filteredConversations.map((conv) => <ConversationCard key={conv.id} conversation={conv} />)
+                {conversations.length > 0 ? (
+                  conversations.map((conv) => <ConversationCard key={conv.id} conversation={conv} />)
                 ) : (
                   <div className="col-span-full text-center py-12">
-                    <p className="text-muted-foreground">No conversations found matching your search.</p>
+                    <p className="text-muted-foreground">No conversations found.</p>
                   </div>
                 )}
               </div>
@@ -333,8 +320,8 @@ export default function Home() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredGuests.length > 0 ? (
-                  filteredGuests.map((persona) => (
+                {personas.length > 0 ? (
+                  personas.map((persona) => (
                     <GuestCard
                       key={persona.id}
                       guest={{
@@ -349,7 +336,7 @@ export default function Home() {
                   ))
                 ) : (
                   <div className="col-span-full text-center py-12">
-                    <p className="text-muted-foreground">No guests found matching your search.</p>
+                    <p className="text-muted-foreground">No guests found.</p>
                   </div>
                 )}
               </div>

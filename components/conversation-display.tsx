@@ -124,7 +124,10 @@ export default function ConversationDisplay({ conversation, personas, user }: Co
 
         {conversation.description && (
           <div className="bg-muted/50 rounded-lg p-6 mb-6">
-            <p className="text-lg leading-relaxed text-pretty">{conversation.description}</p>
+            <div
+              className="text-lg leading-relaxed text-pretty prose prose-lg max-w-none"
+              dangerouslySetInnerHTML={{ __html: conversation.description }}
+            />
           </div>
         )}
 
@@ -193,7 +196,10 @@ export default function ConversationDisplay({ conversation, personas, user }: Co
               <div className="ml-11">
                 <Card className="bg-muted/30 border-0 shadow-none">
                   <div className="p-6">
-                    <div className="prose prose-sm max-w-none leading-relaxed whitespace-pre-wrap">{msg.content}</div>
+                    <div
+                      className="prose prose-sm max-w-none leading-relaxed"
+                      dangerouslySetInnerHTML={{ __html: msg.content }}
+                    />
 
                     {msg.citations && msg.citations.length > 0 && (
                       <div className="mt-4 pt-4 border-t border-border/50">
