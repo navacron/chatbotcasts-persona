@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { CheckCircle2, Loader2, LogIn } from "lucide-react"
+import { CheckCircle2, Loader2, LogIn, Sparkles } from "lucide-react"
 import { createBrowserClient } from "@supabase/ssr"
 import { useRouter } from "next/navigation"
 
@@ -26,6 +26,7 @@ export default function PublishConversation({ conversationData, chatData }: Publ
   const [isPublic, setIsPublic] = useState(true)
   const [published, setPublished] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [personaNames, setPersonaNames] = useState<string[]>([])
   const [categories, setCategories] = useState<Category[]>([])
@@ -124,6 +125,49 @@ export default function PublishConversation({ conversationData, chatData }: Publ
       .replace(/^-+|-+$/g, "")
   }
 
+  const generateSummary = async () => {
+    if (!chatData?.messages || chatData.messages.length === 0) {
+      setError("No messages to summarize")
+      return
+    }
+
+    setIsGeneratingSummary(true)
+    setError(null)
+
+    try {
+      const conversationText = chatData.messages.map((msg: any) => `${msg.name}: ${msg.message}`).join("\n\n")
+
+      const response = await fetch("/api/ai/perplexity", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messages: [
+            {
+              role: "user",
+              content: `Please provide a concise summary of the following conversation in less than 500 words. Focus on the main topics discussed, key insights shared, and important conclusions reached. Do not include HTML tags in your response.\n\nConversation:\n${conversationText}`,
+            },
+          ],
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to generate summary")
+      }
+
+      const data = await response.json()
+      const summary = data.text || ""
+
+      setDescription(summary)
+    } catch (err) {
+      console.error("[v0] Error generating summary:", err)
+      setError(err instanceof Error ? err.message : "Failed to generate summary")
+    } finally {
+      setIsGeneratingSummary(false)
+    }
+  }
+
   const handlePublish = async () => {
     if (!isAuthenticated) {
       setError("Please sign in to publish your conversation")
@@ -154,6 +198,37 @@ export default function PublishConversation({ conversationData, chatData }: Publ
     setError(null)
 
     try {
+      let finalDescription = description
+      if (!description.trim() && chatData?.messages && chatData.messages.length > 0) {
+        console.log("[v0] No description provided, generating summary...")
+
+        const conversationText = chatData.messages.map((msg: any) => `${msg.name}: ${msg.message}`).join("\n\n")
+
+        const summaryResponse = await fetch("/api/ai/perplexity", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            messages: [
+              {
+                role: "user",
+                content: `Please provide a concise summary of the following conversation in less than 500 words. Focus on the main topics discussed, key insights shared, and important conclusions reached. Do not include HTML tags in your response.\n\nConversation:\n${conversationText}`,
+              },
+            ],
+          }),
+        })
+
+        if (summaryResponse.ok) {
+          const summaryData = await summaryResponse.json()
+          finalDescription = summaryData.text || ""
+          setDescription(finalDescription)
+          console.log("[v0] Generated summary:", finalDescription)
+        } else {
+          console.error("[v0] Failed to generate summary, proceeding without it")
+        }
+      }
+
       const formattedMessages = (chatData?.messages || []).map((msg: any, index: number) => ({
         id: msg.id || index + 1,
         role: msg.name,
@@ -165,7 +240,7 @@ export default function PublishConversation({ conversationData, chatData }: Publ
 
       const dataToSave = {
         title: title,
-        content: description || "", // Summary/description
+        content: finalDescription || "",
         slug: slug,
         allPersonaIds: chatData?.personas || [],
         currentPersonaId: chatData?.personas?.[0] || null,
@@ -179,7 +254,7 @@ export default function PublishConversation({ conversationData, chatData }: Publ
         },
         body: JSON.stringify({
           title,
-          description,
+          description: finalDescription,
           slug,
           topic: chatData?.topic || conversationData?.topic || "General Discussion",
           data: dataToSave,
@@ -374,13 +449,38 @@ export default function PublishConversation({ conversationData, chatData }: Publ
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-semibold text-foreground">Description</label>
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-semibold text-foreground">Description</label>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={generateSummary}
+              disabled={isGeneratingSummary || !chatData?.messages || chatData.messages.length === 0}
+              className="h-8 bg-transparent"
+            >
+              {isGeneratingSummary ? (
+                <>
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-3 w-3 mr-1" />
+                  Generate Summary
+                </>
+              )}
+            </Button>
+          </div>
           <textarea
-            placeholder="Describe what this conversation is about..."
+            placeholder="Describe what this conversation is about... (Auto-generated if left empty)"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             className="w-full min-h-24 p-3 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary"
           />
+          <p className="text-xs text-muted-foreground">
+            Leave empty to auto-generate a summary when publishing, or click "Generate Summary" to preview
+          </p>
         </div>
 
         <div className="space-y-3">
@@ -405,12 +505,12 @@ export default function PublishConversation({ conversationData, chatData }: Publ
         </div>
 
         <div className="flex gap-4 pt-4">
-          <Button variant="outline" disabled={isLoading}>
+          <Button variant="outline" disabled={isLoading || isGeneratingSummary}>
             Save as Draft
           </Button>
           <Button
             onClick={handlePublish}
-            disabled={isLoading}
+            disabled={isLoading || isGeneratingSummary}
             className="flex-1 bg-gradient-to-r from-primary to-accent hover:opacity-90"
           >
             {isLoading ? (
