@@ -9,6 +9,7 @@ import { useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
+import PlayAllControl from "@/components/play-all-control"
 
 interface Message {
   id: number
@@ -17,6 +18,7 @@ interface Message {
   personaId: string
   citations: string[]
   timestamp: string
+  audio?: string
 }
 
 interface Persona {
@@ -67,6 +69,7 @@ export default function ConversationDisplay({ conversation, personas, user }: Co
 
   const messages = conversation.data?.messages || []
   const personaMap = new Map(personas.map((p) => [p.id, p]))
+  const hasAudio = messages.some((msg) => msg.audio)
 
   // Helper to get persona avatar color
   const getPersonaColor = (personaId: string) => {
@@ -119,6 +122,12 @@ export default function ConversationDisplay({ conversation, personas, user }: Co
               className="w-full h-auto"
               priority
             />
+          </div>
+        )}
+
+        {hasAudio && (
+          <div className="mb-6">
+            <PlayAllControl messages={messages} />
           </div>
         )}
 
