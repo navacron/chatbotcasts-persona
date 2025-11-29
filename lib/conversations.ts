@@ -4,10 +4,13 @@ export async function getConversationById(id: string) {
   try {
     const supabase = await createClient()
 
-    // Fetch conversation by ID
+    // Fetch conversation by ID with user data
     const { data: conversation, error: conversationError } = await supabase
       .from("conversations")
-      .select("*")
+      .select(`
+        *,
+        users!conversations_user_id_fkey(display_name)
+      `)
       .eq("id", id)
       .maybeSingle()
 
@@ -17,7 +20,6 @@ export async function getConversationById(id: string) {
     }
 
     if (!conversation) {
-      console.log("[v0] Conversation not found for id:", id)
       return null
     }
 
@@ -47,7 +49,7 @@ export async function getConversationById(id: string) {
     return {
       conversation,
       personas: personas || [],
-      user: null,
+      user: (conversation as any).users,
     }
   } catch (error) {
     console.error("[v0] Unexpected error in getConversationById:", error)
@@ -59,10 +61,12 @@ export async function getConversationBySlug(slug: string) {
   try {
     const supabase = await createClient()
 
-    // Fetch conversation with slug
     const { data: conversation, error: conversationError } = await supabase
       .from("conversations")
-      .select("*")
+      .select(`
+        *,
+        users!conversations_user_id_fkey(display_name)
+      `)
       .eq("slug", slug)
       .maybeSingle()
 
@@ -72,20 +76,17 @@ export async function getConversationBySlug(slug: string) {
     }
 
     if (!conversation) {
-      console.log("[v0] Conversation not found for slug:", slug)
       return null
     }
 
     if (conversation.data && conversation.data.messages) {
       conversation.data.messages = conversation.data.messages.map((msg: any) => {
-        // If message doesn't have a personaId, map based on role
         if (!msg.personaId) {
-          // Map legacy roles to personaIds
           if (msg.role === "user" || msg.role === "ChatBotCast Host") {
-            msg.personaId = "f6a7b8c9-d0e1-4f2a-3b4c-5d6e7f8a9b0c" // ChatBotCast Host
+            msg.personaId = "f6a7b8c9-d0e1-4f2a-3b4c-5d6e7f8a9b0c"
             msg.role = "ChatBotCast Host"
           } else if (msg.role === "assistant" || msg.role === "Sab Guru") {
-            msg.personaId = "ebacfcb0-ccea-41d5-8e4a-5cb4099f4f4e" // Sab Guru/Oz Phd
+            msg.personaId = "ebacfcb0-ccea-41d5-8e4a-5cb4099f4f4e"
             msg.role = "Sab Guru"
           }
         }
@@ -125,7 +126,7 @@ export async function getConversationBySlug(slug: string) {
     return {
       conversation,
       personas: personas || [],
-      user: null, // Always set user to null so it displays as Anonymous
+      user: (conversation as any).users,
     }
   } catch (error) {
     console.error("[v0] Unexpected error in getConversationBySlug:", error)
