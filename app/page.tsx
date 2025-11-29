@@ -272,17 +272,17 @@ export default function Home() {
                 <div className="text-sm text-muted-foreground">Loading categories...</div>
               ) : (
                 categories.map((cat) => (
-                  <button
-                    key={cat.id}
-                    onClick={() => setSelectedCategory(cat.id)}
-                    className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                      selectedCategory === cat.id
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary text-foreground hover:bg-secondary/80"
-                    }`}
-                  >
-                    {cat.name}
-                  </button>
+                  <Link key={cat.id} href={`/category/${cat.slug}`}>
+                    <button
+                      className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                        selectedCategory === cat.id
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-secondary text-foreground hover:bg-secondary/80"
+                      }`}
+                    >
+                      {cat.name}
+                    </button>
+                  </Link>
                 ))
               )}
             </div>

@@ -1,18 +1,27 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 
-export async function GET(request: NextRequest) {
+export async function GET(request: NextRequest, context: { params: Promise<{ slug: string }> }) {
   try {
     const supabase = await createClient()
-    const searchParams = request.nextUrl.searchParams
-    const categoryId = searchParams.get("categoryId")
-    const userId = searchParams.get("userId")
+    const { slug } = await context.params // Await params
 
     const postsLimit = Number.parseInt(process.env.POSTS_LIMIT || "20", 10)
 
-    let query = supabase
+    const { data: category, error: categoryError } = await supabase
+      .from("category")
+      .select("id, name, slug, description")
+      .eq("slug", slug)
+      .single()
+
+    if (categoryError || !category) {
+      return NextResponse.json({ error: "Category not found" }, { status: 404 })
+    }
+
+    const { data: conversationsData, error: conversationsError } = await supabase
       .from("conversations")
-      .select(`
+      .select(
+        `
         id,
         title,
         description,
@@ -21,58 +30,43 @@ export async function GET(request: NextRequest) {
         created_at,
         category_id,
         user_id,
-        is_public,
         feature_image,
         users!conversations_user_id_fkey (
-          id,
-          display_name,
-          email
+          display_name
         )
-      `)
+      `,
+      )
+      .eq("category_id", category.id)
+      .eq("is_public", true)
       .order("created_at", { ascending: false })
       .limit(postsLimit)
 
-    // Filter by category if specified
-    if (categoryId && categoryId !== "all") {
-      query = query.eq("category_id", categoryId)
-    }
-
-    // Filter by user or only public
-    if (userId) {
-      query = query.eq("user_id", userId)
-    } else {
-      query = query.eq("is_public", true)
-    }
-
-    const { data: conversationsData, error } = await query
-
-    if (error) {
-      console.error("[v0] Error fetching conversations:", error)
+    if (conversationsError) {
+      console.error("[v0] Error fetching conversations:", conversationsError)
       return NextResponse.json({ error: "Failed to fetch conversations" }, { status: 500 })
     }
 
     if (!conversationsData || conversationsData.length === 0) {
-      return NextResponse.json({ conversations: [] })
+      return NextResponse.json({ category, conversations: [] })
     }
 
-    // Fetch personas for all conversations in a single query
     const conversationIds = conversationsData.map((c) => c.id)
     const { data: allPersonaLinks, error: personaError } = await supabase
       .from("conversation_personas")
-      .select(`
+      .select(
+        `
         conversation_id,
         persona:persona (
-          id,
           name
         )
-      `)
+      `,
+      )
       .in("conversation_id", conversationIds)
 
     if (personaError) {
       console.error("[v0] Error fetching personas:", personaError)
     }
 
-    // Group personas by conversation
     const personasByConversation = new Map<string, string[]>()
     allPersonaLinks?.forEach((link: any) => {
       const convId = link.conversation_id
@@ -85,7 +79,6 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Map conversations with personas and author info
     const conversationsWithPersonas = conversationsData.map((conv) => {
       const participants = personasByConversation.get(conv.id) || []
       const userData = (conv as any).users
@@ -105,9 +98,9 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    return NextResponse.json({ conversations: conversationsWithPersonas })
+    return NextResponse.json({ category, conversations: conversationsWithPersonas })
   } catch (error) {
-    console.error("[v0] Unexpected error in conversations API:", error)
+    console.error("[v0] Unexpected error in category API:", error)
     return NextResponse.json(
       {
         error: "Internal server error",
