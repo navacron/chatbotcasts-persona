@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Search, Zap, Users, Share2 } from "lucide-react"
+import { Search } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import ConversationCard from "@/components/conversation-card"
@@ -209,46 +209,6 @@ export default function Home() {
                   Explore Guests
                 </Button>
               </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Stats */}
-      <div className="border-b border-border bg-white/50">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <Zap className="h-5 w-5 text-accent" />
-                <span className="text-sm text-muted-foreground">Free Credits</span>
-              </div>
-              <p className="text-2xl font-bold text-foreground">10</p>
-              <p className="text-xs text-muted-foreground">conversations for new users</p>
-            </div>
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <Users className="h-5 w-5 text-primary" />
-                <span className="text-sm text-muted-foreground">Personas</span>
-              </div>
-              <p className="text-2xl font-bold text-foreground">50+</p>
-              <p className="text-xs text-muted-foreground">built-in and community</p>
-            </div>
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <Share2 className="h-5 w-5 text-green-600" />
-                <span className="text-sm text-muted-foreground">Conversations</span>
-              </div>
-              <p className="text-2xl font-bold text-foreground">12K+</p>
-              <p className="text-xs text-muted-foreground">published and shared</p>
-            </div>
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <Zap className="h-5 w-5 text-orange-600" />
-                <span className="text-sm text-muted-foreground">Premium</span>
-              </div>
-              <p className="text-2xl font-bold text-foreground">Unlimited</p>
-              <p className="text-xs text-muted-foreground">after free credits</p>
             </div>
           </div>
         </div>
