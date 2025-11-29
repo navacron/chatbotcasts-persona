@@ -8,49 +8,104 @@ export async function GET(request: NextRequest) {
     const categoryId = searchParams.get("categoryId")
     const userId = searchParams.get("userId")
 
-    let query = supabase
-      .from("conversations")
-      .select(`
-        id,
-        title,
-        description,
-        slug,
-        view_count,
-        created_at,
-        category_id,
-        user_id,
-        is_public,
-        feature_image,
-        users!conversations_user_id_fkey (
-          id,
-          display_name,
-          email
-        )
-      `)
-      .order("created_at", { ascending: false })
+    const postsLimit = Number.parseInt(process.env.POSTS_LIMIT || "20", 10)
 
-    if (userId) {
-      query = query.eq("user_id", userId)
+    let conversationsData: any[] = []
+
+    if (!categoryId || categoryId === "all") {
+      // Get all categories first
+      const { data: categories, error: catError } = await supabase.from("category").select("id")
+
+      if (catError) {
+        console.error("[v0] Error fetching categories:", catError)
+        return NextResponse.json({ error: "Failed to fetch categories" }, { status: 500 })
+      }
+
+      // Fetch top POSTS_LIMIT posts for each category
+      const categoryPromises = categories.map(async (cat) => {
+        let query = supabase
+          .from("conversations")
+          .select(`
+            id,
+            title,
+            description,
+            slug,
+            view_count,
+            created_at,
+            category_id,
+            user_id,
+            is_public,
+            feature_image,
+            users!conversations_user_id_fkey (
+              id,
+              display_name,
+              email
+            )
+          `)
+          .eq("category_id", cat.id)
+          .order("created_at", { ascending: false })
+          .limit(postsLimit)
+
+        if (userId) {
+          query = query.eq("user_id", userId)
+        } else {
+          query = query.eq("is_public", true)
+        }
+
+        const { data } = await query
+        return data || []
+      })
+
+      const results = await Promise.all(categoryPromises)
+      // Flatten and sort all results by created_at
+      conversationsData = results
+        .flat()
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     } else {
-      query = query.eq("is_public", true)
+      let query = supabase
+        .from("conversations")
+        .select(`
+          id,
+          title,
+          description,
+          slug,
+          view_count,
+          created_at,
+          category_id,
+          user_id,
+          is_public,
+          feature_image,
+          users!conversations_user_id_fkey (
+            id,
+            display_name,
+            email
+          )
+        `)
+        .eq("category_id", categoryId)
+        .order("created_at", { ascending: false })
+        .limit(postsLimit)
+
+      if (userId) {
+        query = query.eq("user_id", userId)
+      } else {
+        query = query.eq("is_public", true)
+      }
+
+      const { data, error } = await query
+
+      if (error) {
+        console.error("[v0] Error fetching conversations:", error)
+        return NextResponse.json({ error: "Failed to fetch conversations" }, { status: 500 })
+      }
+
+      conversationsData = data || []
     }
 
-    if (categoryId && categoryId !== "all") {
-      query = query.eq("category_id", categoryId)
-    }
-
-    const { data: conversations, error } = await query
-
-    if (error) {
-      console.error("[v0] Error fetching conversations:", error)
-      return NextResponse.json({ error: "Failed to fetch conversations", details: error.message }, { status: 500 })
-    }
-
-    if (!conversations || conversations.length === 0) {
+    if (!conversationsData || conversationsData.length === 0) {
       return NextResponse.json({ conversations: [] })
     }
 
-    const conversationIds = conversations.map((c) => c.id)
+    const conversationIds = conversationsData.map((c) => c.id)
     const { data: allPersonaLinks, error: personaError } = await supabase
       .from("conversation_personas")
       .select(`
@@ -78,7 +133,7 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    const conversationsWithPersonas = conversations.map((conv) => {
+    const conversationsWithPersonas = conversationsData.map((conv) => {
       const participants = personasByConversation.get(conv.id) || []
       const userData = (conv as any).users
       const displayName = userData?.display_name
