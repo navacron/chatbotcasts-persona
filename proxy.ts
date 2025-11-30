@@ -1,6 +1,11 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server"
 
-const isProtectedRoute = createRouteMatcher(["/dashboard(.*)", "/profile(.*)", "/create(.*)", "/guests/create(.*)"])
+const isProtectedRoute = createRouteMatcher([
+  "/dashboard(.*)",
+  "/profile(.*)",
+  "/create(.*)",
+  "/guests/create(.*)",
+])
 
 export default clerkMiddleware(async (auth, req) => {
   if (isProtectedRoute(req)) {
@@ -16,3 +21,4 @@ export const config = {
     "/(api|trpc)(.*)",
   ],
 }
+

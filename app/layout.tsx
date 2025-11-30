@@ -32,15 +32,13 @@ export const metadata: Metadata = {
   },
 }
 
-const clerkPublishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || ""
-
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
   return (
-    <ClerkProvider publishableKey={clerkPublishableKey}>
+    <ClerkProvider>
       <html lang="en">
         <body className={`font-sans antialiased`}>
           <AudioPlayerProvider>{children}</AudioPlayerProvider>
