@@ -1,45 +1,14 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Menu, X, LogOut, Settings } from "lucide-react"
+import { useState } from "react"
+import { Menu, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import Image from "next/image"
-import { createClient } from "@/lib/supabase/client"
-import { useRouter } from "next/navigation"
-import type { User as SupabaseUser } from "@supabase/supabase-js"
+import { SignInButton, SignUpButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs"
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [user, setUser] = useState<SupabaseUser | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const router = useRouter()
-
-  useEffect(() => {
-    const supabase = createClient()
-
-    // Get initial user
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUser(user)
-      setIsLoading(false)
-    })
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
-    })
-
-    return () => subscription.unsubscribe()
-  }, [])
-
-  const handleSignOut = async () => {
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    router.push("/")
-    router.refresh()
-  }
 
   return (
     <header className="border-b border-border bg-white/80 backdrop-blur-sm sticky top-0 z-50">
@@ -68,37 +37,25 @@ export default function Header() {
             <Link href="/test-prompt" className="text-foreground hover:text-primary transition-colors">
               Test Prompt
             </Link>
-            {user && (
+            <SignedIn>
               <Link href="/dashboard" className="text-foreground hover:text-primary transition-colors">
                 Dashboard
               </Link>
-            )}
+            </SignedIn>
           </nav>
 
           <div className="hidden md:flex items-center gap-4">
-            {isLoading ? (
-              <div className="w-20 h-9 bg-secondary animate-pulse rounded" />
-            ) : user ? (
-              <div className="flex items-center gap-2">
-                <Link href="/profile">
-                  <Button variant="ghost" size="icon">
-                    <Settings className="h-5 w-5" />
-                  </Button>
-                </Link>
-                <Button variant="ghost" size="icon" onClick={handleSignOut}>
-                  <LogOut className="h-5 w-5" />
-                </Button>
-              </div>
-            ) : (
-              <>
-                <Link href="/auth/login">
-                  <Button variant="ghost">Sign In</Button>
-                </Link>
-                <Link href="/auth/signup">
-                  <Button>Sign Up</Button>
-                </Link>
-              </>
-            )}
+            <SignedOut>
+              <SignInButton mode="modal">
+                <Button variant="ghost">Sign In</Button>
+              </SignInButton>
+              <SignUpButton mode="modal">
+                <Button>Sign Up</Button>
+              </SignUpButton>
+            </SignedOut>
+            <SignedIn>
+              <UserButton afterSignOutUrl="/" />
+            </SignedIn>
           </div>
 
           {/* Mobile Menu */}
@@ -125,34 +82,32 @@ export default function Header() {
             <Link href="/test-prompt" className="block px-4 py-2 text-foreground hover:bg-secondary rounded">
               Test Prompt
             </Link>
-            {user && (
+            <SignedIn>
               <Link href="/dashboard" className="block px-4 py-2 text-foreground hover:bg-secondary rounded">
                 Dashboard
               </Link>
-            )}
+            </SignedIn>
             <div className="border-t border-border pt-2">
-              {user ? (
-                <>
-                  <Link href="/profile" className="block px-4 py-2 text-foreground hover:bg-secondary rounded">
-                    Profile
-                  </Link>
-                  <button
-                    onClick={handleSignOut}
-                    className="block w-full text-left px-4 py-2 text-foreground hover:bg-secondary rounded"
-                  >
-                    Sign Out
-                  </button>
-                </>
-              ) : (
-                <>
-                  <Link href="/auth/login" className="block px-4 py-2 text-foreground hover:bg-secondary rounded">
+              <SignedOut>
+                <SignInButton mode="modal">
+                  <button className="block w-full text-left px-4 py-2 text-foreground hover:bg-secondary rounded">
                     Sign In
-                  </Link>
-                  <Link href="/auth/signup" className="block px-4 py-2 text-foreground hover:bg-secondary rounded">
+                  </button>
+                </SignInButton>
+                <SignUpButton mode="modal">
+                  <button className="block w-full text-left px-4 py-2 text-foreground hover:bg-secondary rounded">
                     Sign Up
-                  </Link>
-                </>
-              )}
+                  </button>
+                </SignUpButton>
+              </SignedOut>
+              <SignedIn>
+                <Link href="/profile" className="block px-4 py-2 text-foreground hover:bg-secondary rounded">
+                  Profile
+                </Link>
+                <div className="px-4 py-2">
+                  <UserButton afterSignOutUrl="/" />
+                </div>
+              </SignedIn>
             </div>
           </div>
         )}

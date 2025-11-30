@@ -1,83 +1,84 @@
-'use client'
+"use client"
 
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic"
 
-import { useState, useEffect } from 'react'
-import { Zap, Clock, Share2, Users, TrendingUp } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import Header from '@/components/header'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { createBrowserClient } from '@/lib/supabase/client'
+import { useState, useEffect } from "react"
+import { Zap, Clock, Share2, Users, TrendingUp } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import Header from "@/components/header"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { useUser } from "@clerk/nextjs"
+import { createBrowserClient } from "@/lib/supabase/client"
 
 const USER_DATA = {
-  name: 'Alex Johnson',
-  email: 'alex@example.com',
+  name: "Alex Johnson",
+  email: "alex@example.com",
   credits: 25,
   totalCreditsUsed: 150,
-  joinDate: 'Jan 15, 2025',
-  avatar: '👤',
+  joinDate: "Jan 15, 2025",
+  avatar: "👤",
 }
 
 export default function DashboardPage() {
-  const [activeTab, setActiveTab] = useState<'conversations' | 'guests'>('conversations')
+  const [activeTab, setActiveTab] = useState<"conversations" | "guests">("conversations")
   const [myConversations, setMyConversations] = useState<any[]>([])
   const [myGuests, setMyGuests] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [user, setUser] = useState<any>(null)
   const [userCredits, setUserCredits] = useState<number>(0)
   const router = useRouter()
   const supabase = createBrowserClient()
+  const { user, isLoaded } = useUser()
 
   useEffect(() => {
     async function fetchData() {
-      try {
-        const { data: { user: currentUser } } = await supabase.auth.getUser()
-        if (!currentUser) {
-          router.push('/auth/login')
-          return
-        }
-        setUser(currentUser)
+      if (!isLoaded) return
 
-        const { data: userData } = await supabase
-          .from('users')
-          .select('credits')
-          .eq('id', currentUser.id)
-          .single()
-        
+      if (!user) {
+        router.push("/")
+        return
+      }
+
+      try {
+        const { data: userData } = await supabase.from("users").select("credits").eq("id", user.id).single()
+
         if (userData) {
           setUserCredits(userData.credits || 0)
         }
 
-        const conversationsRes = await fetch(`/api/conversations?userId=${currentUser.id}`)
+        const conversationsRes = await fetch(`/api/conversations?userId=${user.id}`)
         const conversationsData = await conversationsRes.json()
         setMyConversations(conversationsData.conversations || [])
 
-        const guestsRes = await fetch('/api/user/guests')
+        const guestsRes = await fetch("/api/user/guests")
         const guestsData = await guestsRes.json()
         setMyGuests(guestsData.guests || [])
       } catch (error) {
-        console.error('[v0] Error fetching dashboard data:', error)
+        console.error("[v0] Error fetching dashboard data:", error)
       } finally {
         setLoading(false)
       }
     }
 
     fetchData()
-  }, [])
+  }, [isLoaded, user])
 
   const stats = [
-    { label: 'Conversations', value: myConversations.length, icon: Share2 },
-    { label: 'Custom Guests', value: myGuests.length, icon: Users },
-    { label: 'Total Views', value: myConversations.reduce((sum, conv) => sum + (conv.views || 0), 0), icon: TrendingUp },
-    { label: 'Credits Remaining', value: userCredits, icon: Zap },
+    { label: "Conversations", value: myConversations.length, icon: Share2 },
+    { label: "Custom Guests", value: myGuests.length, icon: Users },
+    {
+      label: "Total Views",
+      value: myConversations.reduce((sum, conv) => sum + (conv.views || 0), 0),
+      icon: TrendingUp,
+    },
+    { label: "Credits Remaining", value: userCredits, icon: Zap },
   ]
 
   const handleOpenConversation = (slug: string) => {
     router.push(`/posts/${slug}`)
   }
 
-  if (loading) {
+  if (loading || !isLoaded) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
@@ -96,7 +97,7 @@ export default function DashboardPage() {
         <div className="space-y-8 mb-12">
           <div className="space-y-2">
             <h1 className="text-4xl font-bold text-foreground">
-              Welcome back, {user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'User'}!
+              Welcome back, {user?.firstName || user?.username || "User"}!
             </h1>
             <p className="text-muted-foreground">Manage your conversations and guest personas</p>
           </div>
@@ -138,34 +139,32 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between gap-4">
             <div className="flex gap-2 border-b border-border">
               <button
-                onClick={() => setActiveTab('conversations')}
+                onClick={() => setActiveTab("conversations")}
                 className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
-                  activeTab === 'conversations'
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                  activeTab === "conversations"
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
                 My Conversations
               </button>
               <button
-                onClick={() => setActiveTab('guests')}
+                onClick={() => setActiveTab("guests")}
                 className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
-                  activeTab === 'guests'
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                  activeTab === "guests"
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
                 My Guests
               </button>
             </div>
             <Link href="/create">
-              <Button className="bg-gradient-to-r from-primary to-accent hover:opacity-90">
-                New Conversation
-              </Button>
+              <Button className="bg-gradient-to-r from-primary to-accent hover:opacity-90">New Conversation</Button>
             </Link>
           </div>
 
-          {activeTab === 'conversations' && (
+          {activeTab === "conversations" && (
             <div className="space-y-4">
               {myConversations.length > 0 ? (
                 myConversations.map((conv) => (
@@ -179,12 +178,10 @@ export default function DashboardPage() {
                         <h3 className="font-semibold text-lg text-foreground">{conv.title}</h3>
                         <span
                           className={`text-xs font-medium px-2 py-1 rounded ${
-                            conv.is_public
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-gray-100 text-gray-700'
+                            conv.is_public ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"
                           }`}
                         >
-                          {conv.is_public ? 'published' : 'draft'}
+                          {conv.is_public ? "published" : "draft"}
                         </span>
                       </div>
                       <p className="text-sm text-muted-foreground mb-2">{conv.description}</p>
@@ -202,15 +199,19 @@ export default function DashboardPage() {
                         {conv.participants && conv.participants.length > 0 && (
                           <div className="flex items-center gap-1">
                             <Users className="h-4 w-4" />
-                            {conv.participants.join(', ')}
+                            {conv.participants.join(", ")}
                           </div>
                         )}
                       </div>
                     </div>
-                    <Button size="sm" variant="outline" onClick={(e) => {
-                      e.stopPropagation()
-                      handleOpenConversation(conv.slug)
-                    }}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleOpenConversation(conv.slug)
+                      }}
+                    >
                       View
                     </Button>
                   </div>
@@ -228,7 +229,7 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {activeTab === 'guests' && (
+          {activeTab === "guests" && (
             <div className="space-y-4">
               {myGuests.length > 0 ? (
                 myGuests.map((guest) => (
@@ -248,10 +249,12 @@ export default function DashboardPage() {
                           <Users className="h-4 w-4" />
                           {guest.uses} conversations
                         </div>
-                        <span className={`text-xs font-medium px-2 py-1 rounded ${
-                          guest.isPublic ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
-                        }`}>
-                          {guest.isPublic ? 'Public' : 'Private'}
+                        <span
+                          className={`text-xs font-medium px-2 py-1 rounded ${
+                            guest.isPublic ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-700"
+                          }`}
+                        >
+                          {guest.isPublic ? "Public" : "Private"}
                         </span>
                       </div>
                     </div>

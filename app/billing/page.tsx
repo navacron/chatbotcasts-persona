@@ -1,65 +1,56 @@
-'use client'
+"use client"
 
-import { useState, useEffect } from 'react'
-import { Check } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import Header from '@/components/header'
-import Footer from '@/components/footer'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { createBrowserClient } from '@/lib/supabase/client'
-import { SUBSCRIPTION_PLANS } from '@/lib/products'
-import { startCheckoutSession } from '@/app/actions/stripe'
-import StripeCheckout from '@/components/stripe-checkout'
+import { useState } from "react"
+import { Check } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import Header from "@/components/header"
+import Footer from "@/components/footer"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { useUser } from "@clerk/nextjs"
+import { SUBSCRIPTION_PLANS } from "@/lib/products"
+import { startCheckoutSession } from "@/app/actions/stripe"
+import StripeCheckout from "@/components/stripe-checkout"
 
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic"
 
 export default function BillingPage() {
-  const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [checkoutClientSecret, setCheckoutClientSecret] = useState<string | null>(null)
   const router = useRouter()
-  const supabase = createBrowserClient()
-
-  useEffect(() => {
-    const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
-    }
-    checkUser()
-  }, [])
+  const { user, isLoaded } = useUser()
 
   const handleSelectPlan = async (planId: string) => {
-    const plan = SUBSCRIPTION_PLANS.find(p => p.id === planId)
+    const plan = SUBSCRIPTION_PLANS.find((p) => p.id === planId)
     if (!plan) return
 
     if (plan.stripePriceId === null) {
       if (!user) {
-        router.push(`/auth/signup?redirect=/billing`)
+        router.push(`/`)
         return
       }
-      // Handle free plan signup (could update credits here)
-      alert('You are now on the free plan with 10 credits!')
+      // Handle free plan signup
+      alert("You are now on the free plan with 10 credits!")
       return
     }
 
     if (!user) {
-      router.push(`/auth/login?redirect=/billing&plan=${planId}`)
+      router.push(`/`)
       return
     }
 
     setLoading(true)
     try {
       const result = await startCheckoutSession(planId)
-      
-      if (result.type === 'free') {
-        alert('You are now on the free plan!')
-      } else if (result.type === 'checkout') {
+
+      if (result.type === "free") {
+        alert("You are now on the free plan!")
+      } else if (result.type === "checkout") {
         setCheckoutClientSecret(result.clientSecret)
       }
     } catch (error) {
-      console.error('[v0] Error starting checkout:', error)
-      alert('Failed to start checkout. Please try again.')
+      console.error("[v0] Error starting checkout:", error)
+      alert("Failed to start checkout. Please try again.")
     } finally {
       setLoading(false)
     }
@@ -69,20 +60,18 @@ export default function BillingPage() {
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <Header />
-        
+
         <div className="max-w-6xl mx-auto px-4 md:px-8 py-12 flex-1">
           <div className="text-center space-y-2 mb-8">
             <h1 className="text-4xl font-bold text-foreground">Complete Your Subscription</h1>
-            <p className="text-lg text-muted-foreground">
-              You're one step away from unlimited AI conversations
-            </p>
+            <p className="text-lg text-muted-foreground">You're one step away from unlimited AI conversations</p>
           </div>
 
           <StripeCheckout clientSecret={checkoutClientSecret} />
 
           <div className="text-center mt-8">
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               onClick={() => setCheckoutClientSecret(null)}
               className="text-muted-foreground hover:text-foreground"
             >
@@ -103,9 +92,7 @@ export default function BillingPage() {
       <div className="max-w-6xl mx-auto px-4 md:px-8 py-12 flex-1">
         <div className="text-center space-y-2 mb-12">
           <h1 className="text-4xl font-bold text-foreground">Choose Your Plan</h1>
-          <p className="text-lg text-muted-foreground">
-            Start free or subscribe for unlimited AI conversations
-          </p>
+          <p className="text-lg text-muted-foreground">Start free or subscribe for unlimited AI conversations</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto mb-12">
@@ -114,8 +101,8 @@ export default function BillingPage() {
               key={plan.id}
               className={`relative rounded-2xl border-2 transition-all ${
                 plan.popular
-                  ? 'border-primary bg-gradient-to-br from-primary/5 to-accent/5 shadow-lg scale-105'
-                  : 'border-border bg-white'
+                  ? "border-primary bg-gradient-to-br from-primary/5 to-accent/5 shadow-lg scale-105"
+                  : "border-border bg-white"
               } overflow-hidden`}
             >
               {plan.popular && (
@@ -132,12 +119,8 @@ export default function BillingPage() {
 
                 <div>
                   <div className="flex items-baseline gap-2 mb-1">
-                    <span className="text-5xl font-bold text-foreground">
-                      ${plan.price === 0 ? '0' : plan.price}
-                    </span>
-                    {plan.price > 0 && (
-                      <span className="text-muted-foreground">/{plan.period}</span>
-                    )}
+                    <span className="text-5xl font-bold text-foreground">${plan.price === 0 ? "0" : plan.price}</span>
+                    {plan.price > 0 && <span className="text-muted-foreground">/{plan.period}</span>}
                   </div>
                   {plan.originalPrice && (
                     <p className="text-sm text-muted-foreground line-through">
@@ -145,7 +128,7 @@ export default function BillingPage() {
                     </p>
                   )}
                   <p className="text-sm text-muted-foreground mt-2">
-                    {plan.credits.toLocaleString()} credits {plan.price > 0 ? `per ${plan.period}` : 'to start'}
+                    {plan.credits.toLocaleString()} credits {plan.price > 0 ? `per ${plan.period}` : "to start"}
                   </p>
                 </div>
 
@@ -154,12 +137,12 @@ export default function BillingPage() {
                   disabled={loading}
                   className={
                     plan.popular
-                      ? 'w-full h-12 bg-gradient-to-r from-primary to-accent hover:opacity-90 text-lg'
-                      : 'w-full h-12 text-lg'
+                      ? "w-full h-12 bg-gradient-to-r from-primary to-accent hover:opacity-90 text-lg"
+                      : "w-full h-12 text-lg"
                   }
-                  variant={plan.popular ? 'default' : plan.price === 0 ? 'outline' : 'default'}
+                  variant={plan.popular ? "default" : plan.price === 0 ? "outline" : "default"}
                 >
-                  {loading ? 'Loading...' : 'Get Started'}
+                  {loading ? "Loading..." : "Get Started"}
                 </Button>
 
                 <div className="space-y-3 border-t border-border pt-6">

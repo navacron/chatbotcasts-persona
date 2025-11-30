@@ -2,6 +2,7 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
+import { ClerkProvider } from "@clerk/nextjs"
 import "./globals.css"
 import { AudioPlayerProvider } from "@/components/audio-player-context"
 
@@ -31,17 +32,21 @@ export const metadata: Metadata = {
   },
 }
 
+const clerkPublishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || ""
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
-      <body className={`font-sans antialiased`}>
-        <AudioPlayerProvider>{children}</AudioPlayerProvider>
-        <Analytics />
-      </body>
-    </html>
+    <ClerkProvider publishableKey={clerkPublishableKey}>
+      <html lang="en">
+        <body className={`font-sans antialiased`}>
+          <AudioPlayerProvider>{children}</AudioPlayerProvider>
+          <Analytics />
+        </body>
+      </html>
+    </ClerkProvider>
   )
 }

@@ -5,12 +5,11 @@ import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Clock, Eye, User, MessageSquarePlus, ExternalLink } from "lucide-react"
-import { useState, useEffect } from "react"
-import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import PlayAllControl from "@/components/play-all-control"
 import Link from "next/link"
+import { useUser } from "@clerk/nextjs"
 
 interface Message {
   id: number
@@ -61,19 +60,9 @@ interface ConversationDisplayProps {
 }
 
 export default function ConversationDisplay({ conversation, personas, user, category }: ConversationDisplayProps) {
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const { user: clerkUser, isLoaded } = useUser()
+  const isLoggedIn = isLoaded && !!clerkUser
   const router = useRouter()
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      const supabase = createClient()
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      setIsLoggedIn(!!user)
-    }
-    checkAuth()
-  }, [])
 
   const messages = conversation.data?.messages || []
   const personaMap = new Map(personas.map((p) => [p.id, p]))
@@ -195,7 +184,7 @@ export default function ConversationDisplay({ conversation, personas, user, cate
         <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mb-6">
           <div className="flex items-center gap-2">
             <User className="h-4 w-4" />
-            <span>{user?.display_name || "Anonymous"}</span>
+            <span>{clerkUser?.firstName || clerkUser?.lastName || "Anonymous"}</span>
           </div>
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4" />

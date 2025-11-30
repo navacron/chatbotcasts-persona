@@ -4,8 +4,8 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { CheckCircle2, Loader2, LogIn, Sparkles } from "lucide-react"
-import { createBrowserClient } from "@supabase/ssr"
 import { useRouter } from "next/navigation"
+import { useUser } from "@clerk/nextjs"
 
 interface PublishConversationProps {
   conversationData: any
@@ -32,31 +32,11 @@ export default function PublishConversation({ conversationData, chatData }: Publ
   const [categories, setCategories] = useState<Category[]>([])
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("")
   const [loadingCategories, setLoadingCategories] = useState(true)
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [checkingAuth, setCheckingAuth] = useState(true)
   const router = useRouter()
+  const { user, isLoaded } = useUser()
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const supabase = createBrowserClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        )
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
-        setIsAuthenticated(!!user)
-      } catch (error) {
-        console.error("[v0] Error checking auth:", error)
-        setIsAuthenticated(false)
-      } finally {
-        setCheckingAuth(false)
-      }
-    }
-
-    checkAuth()
-  }, [])
+  const isAuthenticated = isLoaded && !!user
+  const checkingAuth = !isLoaded
 
   useEffect(() => {
     const fetchCategories = async () => {
