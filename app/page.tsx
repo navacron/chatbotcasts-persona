@@ -7,7 +7,6 @@ import { Search } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import ConversationCard from "@/components/conversation-card"
-import GuestCard from "@/components/guest-card"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
 import Link from "next/link"
@@ -104,13 +103,10 @@ const MOCK_CONVERSATIONS = [
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<"conversations" | "guests">("conversations")
   const [categories, setCategories] = useState<Category[]>([])
   const [loadingCategories, setLoadingCategories] = useState(true)
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [loadingConversations, setLoadingConversations] = useState(true)
-  const [personas, setPersonas] = useState<Persona[]>([])
-  const [loadingPersonas, setLoadingPersonas] = useState(false)
 
   useEffect(() => {
     async function fetchCategories() {
@@ -147,30 +143,6 @@ export default function Home() {
     }
     fetchConversations()
   }, [selectedCategory])
-
-  useEffect(() => {
-    async function fetchPersonas() {
-      if (activeTab !== "guests") return
-
-      setLoadingPersonas(true)
-      try {
-        const response = await fetch("/api/personas")
-        const data = await response.json()
-
-        if (response.ok) {
-          setPersonas(data.publicPersonas || [])
-        }
-      } catch (error) {
-        console.error("[v0] Error fetching personas:", error)
-      } finally {
-        setLoadingPersonas(false)
-      }
-    }
-
-    if (activeTab === "guests") {
-      fetchPersonas()
-    }
-  }, [activeTab])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -219,7 +191,7 @@ export default function Home() {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
-                  placeholder={activeTab === "conversations" ? "Search conversations..." : "Search guests..."}
+                  placeholder="Search conversations..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10 h-11 bg-white border-border"
@@ -231,118 +203,59 @@ export default function Home() {
             </div>
           </form>
 
-          {/* Tabs */}
-          <div className="flex gap-2 border-b border-border">
+          {/* Category Filter */}
+          <div className="flex flex-wrap gap-2">
             <button
-              onClick={() => setActiveTab("conversations")}
-              className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
-                activeTab === "conversations"
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
+              onClick={() => setSelectedCategory(null)}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                selectedCategory === null
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-secondary text-foreground hover:bg-secondary/80"
               }`}
             >
-              Conversations
+              All Categories
             </button>
-            <button
-              onClick={() => setActiveTab("guests")}
-              className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
-                activeTab === "guests"
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Community Guests
-            </button>
+            {loadingCategories ? (
+              <div className="text-sm text-muted-foreground">Loading categories...</div>
+            ) : (
+              categories.map((cat) => (
+                <Link key={cat.id} href={`/category/${cat.slug}`}>
+                  <button
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                      selectedCategory === cat.id
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-secondary text-foreground hover:bg-secondary/80"
+                    }`}
+                  >
+                    {cat.name}
+                  </button>
+                </Link>
+              ))
+            )}
           </div>
+        </div>
 
-          {/* Category Filter - Only show for conversations */}
-          {activeTab === "conversations" && (
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => setSelectedCategory(null)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                  selectedCategory === null
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-secondary text-foreground hover:bg-secondary/80"
-                }`}
-              >
-                All Categories
-              </button>
-              {loadingCategories ? (
-                <div className="text-sm text-muted-foreground">Loading categories...</div>
+        {/* Content Grid */}
+        <div className="space-y-6">
+          <h2 className="text-2xl font-bold text-foreground">
+            {selectedCategory ? categories.find((c) => c.id === selectedCategory)?.name : "Popular Conversations"}
+          </h2>
+          {loadingConversations ? (
+            <div className="col-span-full text-center py-12">
+              <p className="text-muted-foreground">Loading conversations...</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {conversations.length > 0 ? (
+                conversations.map((conv) => <ConversationCard key={conv.id} conversation={conv} />)
               ) : (
-                categories.map((cat) => (
-                  <Link key={cat.id} href={`/category/${cat.slug}`}>
-                    <button
-                      className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                        selectedCategory === cat.id
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-secondary text-foreground hover:bg-secondary/80"
-                      }`}
-                    >
-                      {cat.name}
-                    </button>
-                  </Link>
-                ))
+                <div className="col-span-full text-center py-12">
+                  <p className="text-muted-foreground">No conversations found.</p>
+                </div>
               )}
             </div>
           )}
         </div>
-
-        {/* Content Grid */}
-        {activeTab === "conversations" ? (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-foreground">
-              {selectedCategory ? categories.find((c) => c.id === selectedCategory)?.name : "Popular Conversations"}
-            </h2>
-            {loadingConversations ? (
-              <div className="col-span-full text-center py-12">
-                <p className="text-muted-foreground">Loading conversations...</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {conversations.length > 0 ? (
-                  conversations.map((conv) => <ConversationCard key={conv.id} conversation={conv} />)
-                ) : (
-                  <div className="col-span-full text-center py-12">
-                    <p className="text-muted-foreground">No conversations found.</p>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-foreground">Community Guests</h2>
-            {loadingPersonas ? (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">Loading guests...</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {personas.length > 0 ? (
-                  personas.map((persona) => (
-                    <GuestCard
-                      key={persona.id}
-                      guest={{
-                        id: persona.id,
-                        name: persona.name,
-                        title: persona.prompt?.substring(0, 100) || "AI Persona",
-                        author: "Community",
-                        uses: 0,
-                        rating: 4.5,
-                      }}
-                    />
-                  ))
-                ) : (
-                  <div className="col-span-full text-center py-12">
-                    <p className="text-muted-foreground">No guests found.</p>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
       {/* Footer */}

@@ -1,5 +1,6 @@
-import { Star, Copy } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Star, Copy } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
 
 interface GuestCardProps {
   guest: {
@@ -9,6 +10,7 @@ interface GuestCardProps {
     author: string
     uses: number
     rating: number
+    slug?: string // Added slug field for linking
   }
 }
 
@@ -33,13 +35,15 @@ export default function GuestCard({ guest }: GuestCardProps) {
 
       {/* Actions */}
       <div className="flex gap-2 pt-2">
-        <Button size="sm" variant="outline" className="flex-1">
+        <Button size="sm" variant="outline" className="flex-1 bg-transparent">
           <Copy className="h-4 w-4 mr-2" />
           Use
         </Button>
-        <Button size="sm" variant="outline" className="flex-1">
-          View
-        </Button>
+        <Link href={`/guest/${guest.slug}`}>
+          <Button size="sm" variant="outline" className="flex-1 bg-transparent">
+            View
+          </Button>
+        </Link>
       </div>
     </div>
   )

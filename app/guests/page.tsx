@@ -1,12 +1,12 @@
-'use client'
+"use client"
 
-import { useState, useEffect } from 'react'
-import { Search, Plus } from 'lucide-react'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import Header from '@/components/header'
-import GuestCard from '@/components/guest-card'
-import Link from 'next/link'
+import { useState, useEffect } from "react"
+import { Search, Plus } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import Header from "@/components/header"
+import GuestCard from "@/components/guest-card"
+import Link from "next/link"
 
 interface Persona {
   id: string
@@ -17,11 +17,12 @@ interface Persona {
   user_id: string
   created_at: string
   updated_at: string
+  slug: string // Added slug to Persona interface
 }
 
 export default function GuestsPage() {
-  const [searchQuery, setSearchQuery] = useState('')
-  const [activeTab, setActiveTab] = useState<'my' | 'community'>('community')
+  const [searchQuery, setSearchQuery] = useState("")
+  const [activeTab, setActiveTab] = useState<"my" | "community">("community")
   const [publicPersonas, setPublicPersonas] = useState<Persona[]>([])
   const [myPersonas, setMyPersonas] = useState<Persona[]>([])
   const [loading, setLoading] = useState(true)
@@ -37,20 +38,20 @@ export default function GuestsPage() {
       setLoading(true)
       const response = await fetch(`/api/personas?q=${encodeURIComponent(searchQuery)}`)
       const data = await response.json()
-      
+
       if (response.ok) {
         setPublicPersonas(data.publicPersonas || [])
         setMyPersonas(data.myPersonas || [])
         setIsAuthenticated(data.isAuthenticated)
       }
     } catch (error) {
-      console.error('[v0] Error fetching personas:', error)
+      console.error("[v0] Error fetching personas:", error)
     } finally {
       setLoading(false)
     }
   }
 
-  const displayedPersonas = activeTab === 'my' ? myPersonas : publicPersonas
+  const displayedPersonas = activeTab === "my" ? myPersonas : publicPersonas
 
   return (
     <div className="min-h-screen bg-background">
@@ -64,7 +65,7 @@ export default function GuestsPage() {
               <h1 className="text-4xl font-bold text-foreground">Manage Guests</h1>
               <p className="text-muted-foreground">Create and manage custom AI personas</p>
             </div>
-            {activeTab === 'my' && (
+            {activeTab === "my" && (
               <Link href="/guests/create">
                 <Button className="bg-gradient-to-r from-primary to-accent hover:opacity-90">
                   <Plus className="h-4 w-4 mr-2" />
@@ -77,21 +78,21 @@ export default function GuestsPage() {
           {/* Tabs */}
           <div className="flex gap-2 border-b border-border">
             <button
-              onClick={() => setActiveTab('community')}
+              onClick={() => setActiveTab("community")}
               className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
-                activeTab === 'community'
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
+                activeTab === "community"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
               Community Guests
             </button>
             <button
-              onClick={() => setActiveTab('my')}
+              onClick={() => setActiveTab("my")}
               className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
-                activeTab === 'my'
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
+                activeTab === "my"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
               My Guests
@@ -123,19 +124,20 @@ export default function GuestsPage() {
                 guest={{
                   id: persona.id,
                   name: persona.name,
-                  title: persona.prompt?.substring(0, 100) || 'AI Persona',
-                  author: activeTab === 'my' ? 'You' : 'Community',
+                  title: persona.prompt?.substring(0, 100) || "AI Persona",
+                  author: activeTab === "my" ? "You" : "Community",
                   uses: 0,
                   rating: 4.5,
+                  slug: persona.slug, // Pass slug to guest card for linking
                 }}
               />
             ))
           ) : (
             <div className="col-span-full text-center py-12">
               <p className="text-muted-foreground">
-                {activeTab === 'my' && !isAuthenticated
-                  ? 'Sign in to view your personas'
-                  : 'No guests found matching your search.'}
+                {activeTab === "my" && !isAuthenticated
+                  ? "Sign in to view your personas"
+                  : "No guests found matching your search."}
               </p>
             </div>
           )}
