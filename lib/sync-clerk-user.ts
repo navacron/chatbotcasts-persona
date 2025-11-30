@@ -29,6 +29,14 @@ export async function syncClerkUserToDatabase(clerkUserData: ClerkUserData): Pro
 }> {
   const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
+  // Log the Clerk user ID being used
+  console.log("[sync-clerk-user] ========================================")
+  console.log("[sync-clerk-user] Clerk User ID from webhook:", clerkUserData.id)
+  console.log("[sync-clerk-user] This ID should match:")
+  console.log("[sync-clerk-user]   - Clerk Dashboard → Users → [Your User] → User ID")
+  console.log("[sync-clerk-user]   - Format: 'user_...' (starts with 'user_')")
+  console.log("[sync-clerk-user] ========================================")
+
   // Handle both possible email field names (emailAddress or email_address)
   // Clerk webhooks use email_address (snake_case)
   const emailAddressObj = clerkUserData.emailAddresses[0]
