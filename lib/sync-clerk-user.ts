@@ -70,15 +70,22 @@ export async function syncClerkUserToDatabase(clerkUserData: ClerkUserData): Pro
   if (existingUserByEmail && existingUserByEmail.id !== clerkUserData.id) {
     // Email reconciliation: Update existing user's ID to match Clerk user ID
     // This handles the case where chatbotcasts@gmail.com exists from old auth
+    // Build update object dynamically to handle missing columns
+    const updateData: any = {
+      id: clerkUserData.id, // Update ID to Clerk user ID
+      email: email,
+      display_name: displayName,
+      updated_at: new Date().toISOString(),
+    }
+    
+    // Only include avatar_url if imageUrl is provided (handles missing column gracefully)
+    if (clerkUserData.imageUrl) {
+      updateData.avatar_url = clerkUserData.imageUrl
+    }
+
     const { error: updateError } = await supabase
       .from("users")
-      .update({
-        id: clerkUserData.id, // Update ID to Clerk user ID
-        email: email,
-        display_name: displayName,
-        avatar_url: clerkUserData.imageUrl || null,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq("id", existingUserByEmail.id)
 
     if (updateError) {
@@ -130,14 +137,21 @@ export async function syncClerkUserToDatabase(clerkUserData: ClerkUserData): Pro
 
   if (existingUserById) {
     // User exists, just update their info
+    // Build update object dynamically to handle missing columns
+    const updateData: any = {
+      email: email,
+      display_name: displayName,
+      updated_at: new Date().toISOString(),
+    }
+    
+    // Only include avatar_url if imageUrl is provided (handles missing column gracefully)
+    if (clerkUserData.imageUrl) {
+      updateData.avatar_url = clerkUserData.imageUrl
+    }
+
     const { error: updateError } = await supabase
       .from("users")
-      .update({
-        email: email,
-        display_name: displayName,
-        avatar_url: clerkUserData.imageUrl || null,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq("id", clerkUserData.id)
 
     if (updateError) {
@@ -158,17 +172,24 @@ export async function syncClerkUserToDatabase(clerkUserData: ClerkUserData): Pro
   }
 
   // Create new user
-  const { error: insertError } = await supabase.from("users").insert({
+  // Build insert object dynamically to handle missing columns
+  const insertData: any = {
     id: clerkUserData.id,
     email: email,
     display_name: displayName,
-    avatar_url: clerkUserData.imageUrl || null,
     credits: 10, // Give new users 10 free credits
     subscription_tier: "free",
     subscription_status: "active",
     created_at: new Date(clerkUserData.createdAt).toISOString(),
     updated_at: new Date().toISOString(),
-  })
+  }
+  
+  // Only include avatar_url if imageUrl is provided (handles missing column gracefully)
+  if (clerkUserData.imageUrl) {
+    insertData.avatar_url = clerkUserData.imageUrl
+  }
+
+  const { error: insertError } = await supabase.from("users").insert(insertData)
 
   if (insertError) {
     console.error("[sync-clerk-user] Error inserting user:", insertError)
