@@ -172,24 +172,47 @@ export async function syncClerkUserToDatabase(clerkUserData: ClerkUserData): Pro
   }
 
   // Create new user
-  // Build insert object dynamically to handle missing columns
+  // Build insert object with only required/guaranteed columns
+  // Don't include subscription fields - they might not exist in the schema
   const insertData: any = {
     id: clerkUserData.id,
     email: email,
     display_name: displayName,
     credits: 10, // Give new users 10 free credits
-    subscription_tier: "free",
-    subscription_status: "active",
     created_at: new Date(clerkUserData.createdAt).toISOString(),
     updated_at: new Date().toISOString(),
   }
   
-  // Only include avatar_url if imageUrl is provided (handles missing column gracefully)
+  // Only include optional columns if data is provided
   if (clerkUserData.imageUrl) {
     insertData.avatar_url = clerkUserData.imageUrl
   }
-
-  const { error: insertError } = await supabase.from("users").insert(insertData)
+  
+  // Try to insert without subscription fields first
+  // These columns might not exist if the migration hasn't been run
+  let { error: insertError } = await supabase.from("users").insert(insertData)
+  
+  // If insert failed due to missing subscription columns, that's fine - we'll skip them
+  // The error code PGRST204 means "column not found in schema cache"
+  if (insertError && (insertError.code === "PGRST204" || insertError.message?.includes("subscription"))) {
+    console.log("[sync-clerk-user] Subscription columns not found, user created without them:", insertError.message)
+    // The insert might have actually succeeded, or it failed for another reason
+    // Check if user was created by querying
+    const { data: checkUser } = await supabase
+      .from("users")
+      .select("id")
+      .eq("id", clerkUserData.id)
+      .maybeSingle()
+    
+    if (checkUser) {
+      // User was created successfully, just without subscription fields
+      console.log("[sync-clerk-user] User created successfully without subscription fields")
+      insertError = null
+    } else {
+      // User wasn't created, but it's not a subscription error - it's something else
+      console.error("[sync-clerk-user] User creation failed:", insertError)
+    }
+  }
 
   if (insertError) {
     console.error("[sync-clerk-user] Error inserting user:", insertError)
