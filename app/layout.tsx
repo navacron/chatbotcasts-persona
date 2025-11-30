@@ -5,6 +5,7 @@ import { Analytics } from "@vercel/analytics/next"
 import { ClerkProvider } from "@clerk/nextjs"
 import "./globals.css"
 import { AudioPlayerProvider } from "@/components/audio-player-context"
+import UserSyncProvider from "@/components/user-sync-provider"
 
 const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
@@ -41,7 +42,9 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang="en">
         <body className={`font-sans antialiased`}>
-          <AudioPlayerProvider>{children}</AudioPlayerProvider>
+          <UserSyncProvider>
+            <AudioPlayerProvider>{children}</AudioPlayerProvider>
+          </UserSyncProvider>
           <Analytics />
         </body>
       </html>
