@@ -48,6 +48,35 @@ export async function POST(req: Request) {
   if (eventType === "user.created" || eventType === "user.updated") {
     const { id, email_addresses, first_name, last_name, image_url, created_at } = evt.data
 
+    // Log the full payload for debugging
+    console.log("[clerk-webhook] Full event data:", JSON.stringify(evt.data, null, 2))
+    console.log("[clerk-webhook] Extracted fields:", {
+      id,
+      email_addresses,
+      first_name,
+      last_name,
+      hasEmailAddresses: !!email_addresses,
+      emailAddressesLength: email_addresses?.length || 0,
+      emailAddressesType: typeof email_addresses,
+    })
+
+    // Check if email_addresses exists and has at least one email
+    if (!email_addresses || !Array.isArray(email_addresses) || email_addresses.length === 0) {
+      console.error("[clerk-webhook] No email addresses found. Full payload:", JSON.stringify(evt.data, null, 2))
+      return NextResponse.json(
+        { 
+          error: "No email addresses found in user data", 
+          userId: id,
+          eventType,
+          hasEmailAddresses: !!email_addresses,
+        },
+        { status: 400 }
+      )
+    }
+
+    // Log the first email address structure
+    console.log("[clerk-webhook] First email address object:", email_addresses[0])
+
     const clerkUserData = {
       id,
       emailAddresses: email_addresses,

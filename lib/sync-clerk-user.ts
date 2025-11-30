@@ -10,7 +10,7 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
 export interface ClerkUserData {
   id: string
-  emailAddresses: Array<{ emailAddress: string }>
+  emailAddresses: Array<{ email_address: string } | { emailAddress: string }>
   firstName?: string | null
   lastName?: string | null
   imageUrl?: string | null
@@ -29,13 +29,23 @@ export async function syncClerkUserToDatabase(clerkUserData: ClerkUserData): Pro
 }> {
   const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-  const email = clerkUserData.emailAddresses[0]?.emailAddress
+  // Handle both possible email field names (emailAddress or email_address)
+  // Clerk webhooks use email_address (snake_case)
+  const emailAddressObj = clerkUserData.emailAddresses[0]
+  const email =
+    (emailAddressObj as any)?.email_address || (emailAddressObj as any)?.emailAddress
+
   if (!email) {
+    console.error("[sync-clerk-user] No email found in:", {
+      emailAddresses: clerkUserData.emailAddresses,
+      firstItem: clerkUserData.emailAddresses[0],
+      userId: clerkUserData.id,
+    })
     return {
       success: false,
       userId: clerkUserData.id,
       wasExisting: false,
-      error: "No email address found",
+      error: "No email address found in user data",
     }
   }
 
