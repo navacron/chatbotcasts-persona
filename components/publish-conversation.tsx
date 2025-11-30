@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { CheckCircle2, Loader2, LogIn, Sparkles } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useUser } from "@clerk/nextjs"
+import { useUser, SignInButton, SignUpButton } from "@clerk/nextjs"
 
 interface PublishConversationProps {
   conversationData: any
@@ -290,15 +290,16 @@ export default function PublishConversation({ conversationData, chatData }: Publ
         </div>
 
         <div className="flex flex-col gap-3">
-          <Button
-            onClick={() => router.push("/auth/login?redirect=/create")}
-            className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90"
-          >
-            Sign In to Continue
-          </Button>
-          <Button variant="outline" onClick={() => router.push("/auth/signup?redirect=/create")} className="w-full">
-            Create New Account
-          </Button>
+          <SignInButton mode="modal" fallbackRedirectUrl="/create">
+            <Button className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90">
+              Sign In to Continue
+            </Button>
+          </SignInButton>
+          <SignUpButton mode="modal" fallbackRedirectUrl="/create">
+            <Button variant="outline" className="w-full">
+              Create New Account
+            </Button>
+          </SignUpButton>
         </div>
 
         <div className="space-y-2">

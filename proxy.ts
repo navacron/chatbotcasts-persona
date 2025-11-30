@@ -1,10 +1,12 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server"
 
+// Only protect routes that require authentication
+// Public routes: /, /about, /create, /posts, /guests (browsing), /billing, etc.
+// Protected routes: /dashboard, /profile
+// Note: API routes handle their own authentication (e.g., /api/addUpdateConversation)
 const isProtectedRoute = createRouteMatcher([
   "/dashboard(.*)",
   "/profile(.*)",
-  "/create(.*)",
-  "/guests/create(.*)",
 ])
 
 export default clerkMiddleware(async (auth, req) => {
