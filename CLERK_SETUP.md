@@ -169,3 +169,4 @@ Both methods ensure users exist in the database before they can create conversat
 - RLS policies are permissive but application code enforces auth
 - All API routes verify Clerk authentication before operations
 
+

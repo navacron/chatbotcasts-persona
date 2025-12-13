@@ -37,3 +37,4 @@ FROM public.users
 WHERE email = 'chatbotcasts@gmail.com'
 ORDER BY created_at DESC;
 
+

@@ -105,3 +105,4 @@ COMMIT;
 -- 3. The service role key is used in API routes to bypass RLS when needed
 -- 4. Application code should always check: user_id matches the authenticated Clerk user ID
 
+

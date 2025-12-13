@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { createServiceClient } from "@/lib/supabase/service"
 import { auth } from "@clerk/nextjs/server"
 import { type NextRequest, NextResponse } from "next/server"
 
@@ -13,7 +14,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { title, description, topic, data, isPublic, slug, personaIds, categoryId } = body
 
-    // Validate required fields
+    // Validate required fields first (before checking credits)
     if (!title || !topic || !data) {
       return NextResponse.json(
         { error: "Missing required fields: title, topic, and data are required" },
@@ -34,6 +35,43 @@ export async function POST(request: NextRequest) {
 
     if (!categoryId) {
       return NextResponse.json({ error: "Category is required" }, { status: 400 })
+    }
+
+    // Use service client for credit operations (bypasses RLS)
+    const supabaseService = createServiceClient()
+
+    // Check and decrement credits after validation (before creating conversation)
+    const { data: creditCheck, error: creditError } = await supabaseService.rpc(
+      "check_and_decrement_credits",
+      {
+        p_user_id: userId,
+        p_credits_needed: 1,
+      }
+    )
+
+    if (creditError) {
+      console.error("[API] Error checking credits:", creditError)
+      return NextResponse.json(
+        { error: `Failed to check credits: ${creditError.message}` },
+        { status: 500 }
+      )
+    }
+
+    // creditCheck returns a boolean - false means insufficient credits
+    if (creditCheck === false) {
+      // Get available credits for error message
+      const { data: availableCredits } = await supabaseService.rpc("get_available_credits", {
+        p_user_id: userId,
+      })
+
+      return NextResponse.json(
+        {
+          error: "Insufficient credits",
+          message: `You have ${availableCredits || 0} credits remaining. You need 1 credit to create a conversation.`,
+          availableCredits: availableCredits || 0,
+        },
+        { status: 403 }
+      )
     }
 
     const supabase = await createClient()
@@ -70,6 +108,11 @@ export async function POST(request: NextRequest) {
 
     if (insertError) {
       console.error("[API] Error inserting conversation:", insertError)
+      // Refund the credit since conversation creation failed
+      await supabaseService.rpc("increment_credits", {
+        p_user_id: userId,
+        p_amount: 1,
+      })
       return NextResponse.json({ error: `Failed to create conversation: ${insertError.message}` }, { status: 500 })
     }
 
@@ -85,6 +128,11 @@ export async function POST(request: NextRequest) {
       console.error("[API] Error inserting persona relations:", personaError)
       // Rollback: delete the conversation since persona relations failed
       await supabase.from("conversations").delete().eq("id", conversation.id)
+      // Also refund the credit since conversation creation failed
+      await supabaseService.rpc("increment_credits", {
+        p_user_id: userId,
+        p_amount: 1,
+      })
 
       return NextResponse.json(
         { error: `Failed to link personas to conversation: ${personaError.message}` },
@@ -92,10 +140,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Log credit usage
+    await supabaseService.from("credit_usage_log").insert({
+      user_id: userId,
+      conversation_id: conversation.id,
+      credits_used: 1,
+      description: `Created conversation: ${title}`,
+    })
+
+    // Get updated credit count for response
+    const { data: availableCredits } = await supabaseService.rpc("get_available_credits", {
+      p_user_id: userId,
+    })
+
     return NextResponse.json({
       success: true,
       conversation,
       personaCount: personaIds.length,
+      creditsRemaining: availableCredits || 0,
     })
   } catch (error) {
     console.error("[API] Unexpected error:", error)

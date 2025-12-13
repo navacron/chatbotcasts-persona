@@ -180,8 +180,7 @@ export async function syncClerkUserToDatabase(clerkUserData: ClerkUserData): Pro
   }
 
   // Create new user
-  // Build insert object with only required/guaranteed columns
-  // Don't include subscription fields - they might not exist in the schema
+  // Build insert object with only required/guaranteed columns first
   const insertData: any = {
     id: clerkUserData.id,
     email: email,
@@ -196,29 +195,31 @@ export async function syncClerkUserToDatabase(clerkUserData: ClerkUserData): Pro
     insertData.avatar_url = clerkUserData.imageUrl
   }
   
-  // Try to insert without subscription fields first
-  // These columns might not exist if the migration hasn't been run
+  // Try to include subscription fields (they might not exist if migration hasn't been run)
+  // We'll try with them first, then retry without if they don't exist
+  insertData.monthly_credit_limit = 10 // Free users get 10 credits/month
+  insertData.credits_used_this_month = 0
+  insertData.last_credit_reset = new Date().toISOString()
+  insertData.clerk_plan_id = "free" // Default to free plan
+  insertData.subscription_status = "active"
+  
   let { error: insertError } = await supabase.from("users").insert(insertData)
   
-  // If insert failed due to missing subscription columns, that's fine - we'll skip them
-  // The error code PGRST204 means "column not found in schema cache"
-  if (insertError && (insertError.code === "PGRST204" || insertError.message?.includes("subscription"))) {
-    console.log("[sync-clerk-user] Subscription columns not found, user created without them:", insertError.message)
-    // The insert might have actually succeeded, or it failed for another reason
-    // Check if user was created by querying
-    const { data: checkUser } = await supabase
-      .from("users")
-      .select("id")
-      .eq("id", clerkUserData.id)
-      .maybeSingle()
+  // If insert failed due to missing subscription columns, retry without them
+  if (insertError && (insertError.code === "PGRST204" || insertError.message?.includes("subscription") || insertError.message?.includes("monthly_credit_limit"))) {
+    console.log("[sync-clerk-user] Subscription columns not found, retrying without them:", insertError.message)
+    // Remove subscription fields and retry
+    delete insertData.monthly_credit_limit
+    delete insertData.credits_used_this_month
+    delete insertData.last_credit_reset
+    delete insertData.clerk_plan_id
+    delete insertData.subscription_status
     
-    if (checkUser) {
-      // User was created successfully, just without subscription fields
+    const retryResult = await supabase.from("users").insert(insertData)
+    insertError = retryResult.error
+    
+    if (!insertError) {
       console.log("[sync-clerk-user] User created successfully without subscription fields")
-      insertError = null
-    } else {
-      // User wasn't created, but it's not a subscription error - it's something else
-      console.error("[sync-clerk-user] User creation failed:", insertError)
     }
   }
 

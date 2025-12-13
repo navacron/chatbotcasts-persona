@@ -34,3 +34,4 @@ WHERE u.email = 'chatbotcasts@gmail.com';
 -- 1. Get the correct Clerk User ID from Clerk Dashboard
 -- 2. Run script 027_update_chatbotcasts_user_id.sql with the correct ID
 
+

@@ -76,3 +76,4 @@ COMMIT;
 -- 4. If automatic reconciliation fails, you can manually call:
 --    SELECT public.reconcile_user_email('old-uuid', 'new-clerk-uuid');
 
+
