@@ -3,7 +3,12 @@ import { headers } from "next/headers"
 import { NextResponse } from "next/server"
 import { createServiceClient } from "@/lib/supabase/service"
 
-const webhookSecret = process.env.CLERK_WEBHOOK_SECRET!
+// Use subscription-specific webhook secret if available, otherwise fall back to general webhook secret
+const webhookSecret = process.env.CLERK_WEBHOOK_SUBSCRIPTION_SECRET || process.env.CLERK_WEBHOOK_SECRET!
+
+if (!webhookSecret) {
+  console.error("[clerk-subscription-webhook] Missing webhook secret! Set CLERK_WEBHOOK_SUBSCRIPTION_SECRET or CLERK_WEBHOOK_SECRET")
+}
 
 export async function POST(req: Request) {
   // Get the Svix headers for verification
@@ -30,6 +35,12 @@ export async function POST(req: Request) {
 
   // Verify the payload with the headers
   try {
+    if (!webhookSecret) {
+      console.error("[clerk-subscription-webhook] Webhook secret is missing")
+      return new NextResponse("Webhook secret not configured", {
+        status: 500,
+      })
+    }
     evt = wh.verify(body, {
       "svix-id": svix_id,
       "svix-timestamp": svix_timestamp,
@@ -37,6 +48,12 @@ export async function POST(req: Request) {
     }) as any
   } catch (err) {
     console.error("[clerk-subscription-webhook] Error verifying webhook:", err)
+    console.error("[clerk-subscription-webhook] Webhook secret configured:", !!webhookSecret)
+    console.error("[clerk-subscription-webhook] Headers received:", {
+      svix_id: !!svix_id,
+      svix_timestamp: !!svix_timestamp,
+      svix_signature: !!svix_signature,
+    })
     return new NextResponse("Error occurred", {
       status: 400,
     })
