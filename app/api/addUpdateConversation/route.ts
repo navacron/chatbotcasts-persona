@@ -40,7 +40,38 @@ export async function POST(request: NextRequest) {
     // Use service client for credit operations (bypasses RLS)
     const supabaseService = createServiceClient()
 
-    // Check and decrement credits after validation (before creating conversation)
+    // PRE-CHECK: Get available credits before attempting to decrement
+    const { data: availableCreditsBefore, error: preCheckError } = await supabaseService.rpc(
+      "get_available_credits",
+      {
+        p_user_id: userId,
+      }
+    )
+
+    if (preCheckError) {
+      console.error("[API] Error getting available credits:", preCheckError)
+      return NextResponse.json(
+        { error: `Failed to check credits: ${preCheckError.message}` },
+        { status: 500 }
+      )
+    }
+
+    console.log("[API] Pre-check credits for user:", userId, "available:", availableCreditsBefore)
+
+    // Explicitly block if no credits available
+    if (!availableCreditsBefore || availableCreditsBefore <= 0) {
+      console.log("[API] BLOCKING: User has 0 or negative credits")
+      return NextResponse.json(
+        {
+          error: "Insufficient credits",
+          message: `You have ${availableCreditsBefore || 0} credits remaining. You need 1 credit to create a conversation. Please subscribe to get more credits.`,
+          availableCredits: availableCreditsBefore || 0,
+        },
+        { status: 403 }
+      )
+    }
+
+    // Now attempt to check and decrement credits
     const { data: creditCheck, error: creditError } = await supabaseService.rpc(
       "check_and_decrement_credits",
       {
@@ -50,7 +81,7 @@ export async function POST(request: NextRequest) {
     )
 
     if (creditError) {
-      console.error("[API] Error checking credits:", creditError)
+      console.error("[API] Error checking/decrementing credits:", creditError)
       return NextResponse.json(
         { error: `Failed to check credits: ${creditError.message}` },
         { status: 500 }
@@ -58,7 +89,8 @@ export async function POST(request: NextRequest) {
     }
 
     // creditCheck returns a boolean - false means insufficient credits
-    if (creditCheck === false) {
+    if (creditCheck === false || creditCheck === null) {
+      console.log("[API] BLOCKING: Credit check returned false/null")
       // Get available credits for error message
       const { data: availableCredits } = await supabaseService.rpc("get_available_credits", {
         p_user_id: userId,
@@ -67,7 +99,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error: "Insufficient credits",
-          message: `You have ${availableCredits || 0} credits remaining. You need 1 credit to create a conversation.`,
+          message: `You have ${availableCredits || 0} credits remaining. You need 1 credit to create a conversation. Please subscribe to get more credits.`,
           availableCredits: availableCredits || 0,
         },
         { status: 403 }
