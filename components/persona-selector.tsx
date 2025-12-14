@@ -104,8 +104,16 @@ export default function PersonaSelector({
   }
 
   const hostPersonas = publicPersonas.filter(p => p.name.toLowerCase().includes('host'))
-  const popularPersonas = publicPersonas.filter(p => !p.name.toLowerCase().includes('host')).slice(0, 3)
-  const recentPersonas = myPersonas.slice(0, 3)
+  // Combine all non-host personas (public and user's) and limit to 20
+  const allNonHostPersonas = [
+    ...myPersonas,
+    ...publicPersonas.filter(p => !p.name.toLowerCase().includes('host'))
+  ]
+  // Remove duplicates (in case a persona appears in both lists)
+  const uniquePersonas = allNonHostPersonas.filter((persona, index, self) => 
+    index === self.findIndex(p => p.id === persona.id)
+  )
+  const guestPersonas = uniquePersonas.slice(0, 20)
   // </CHANGE>
 
   const renderPersonaGrid = (personas: Persona[]) => (
@@ -249,19 +257,14 @@ export default function PersonaSelector({
         <div className="text-center py-8 text-muted-foreground">
           Loading personas...
         </div>
-      ) : (publicPersonas.length > 0 || myPersonas.length > 0) ? (
+      ) : (guestPersonas.length > 0 || hostPersonas.length > 0) ? (
         <div className="space-y-6">
-          {popularPersonas.length > 0 && (
+          {guestPersonas.length > 0 && (
             <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-foreground">Popular Personas</h3>
-              {renderPersonaGrid(popularPersonas)}
-            </div>
-          )}
-
-          {recentPersonas.length > 0 && (
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-foreground">My Personas</h3>
-              {renderPersonaGrid(recentPersonas)}
+              <h3 className="text-sm font-semibold text-foreground">
+                Guests {guestPersonas.length < uniquePersonas.length && `(Showing ${guestPersonas.length} of ${uniquePersonas.length})`}
+              </h3>
+              {renderPersonaGrid(guestPersonas)}
             </div>
           )}
 
