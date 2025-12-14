@@ -1,6 +1,7 @@
 import type React from "react"
 import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
+import Script from "next/script"
 import { Analytics } from "@vercel/analytics/next"
 import { ClerkProvider } from "@clerk/nextjs"
 import "./globals.css"
@@ -42,6 +43,18 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang="en">
         <body className={`font-sans antialiased`}>
+          <Script
+            src="https://www.googletagmanager.com/gtag/js?id=G-XJ9RCCTFPN"
+            strategy="afterInteractive"
+          />
+          <Script id="google-analytics" strategy="afterInteractive">
+            {`
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', 'G-XJ9RCCTFPN');
+            `}
+          </Script>
           <UserSyncProvider>
             <AudioPlayerProvider>{children}</AudioPlayerProvider>
           </UserSyncProvider>
