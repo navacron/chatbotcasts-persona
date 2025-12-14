@@ -66,7 +66,7 @@ Output your answer as ${currentPersona.name} would respond. You will be discussi
 
 ${conversationContext ? `Here is the conversation so far:\n\n${conversationContext}\n\n` : ""}
 
-Answer as a normal human would respond and dont include special characters or markdown.`
+Answer as a normal human would respond and dont include special characters or markdown, clean paragraph. Keep your words around 30 to 80.`
 
     console.log("[v0] System prompt:", systemPrompt)
 
