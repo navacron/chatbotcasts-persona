@@ -1,3 +1,5 @@
+import { useUser } from "@clerk/nextjs"
+
 interface PersonaSwitcherProps {
   personas: string[]
   selected: string | null
@@ -5,12 +7,16 @@ interface PersonaSwitcherProps {
   personaDetails: any
 }
 
+const HUMAN_PERSONA_ID = "human"
+
 export default function PersonaSwitcher({
   personas,
   selected,
   onSelect,
   personaDetails,
 }: PersonaSwitcherProps) {
+  const { user } = useUser()
+  
   return (
     <div className="flex flex-wrap gap-2">
       {personas.map((personaId) => {
@@ -30,6 +36,7 @@ export default function PersonaSwitcher({
         }
         
         const isSelected = selected === personaId
+        const isHuman = personaId === HUMAN_PERSONA_ID
 
         return (
           <button
@@ -45,7 +52,15 @@ export default function PersonaSwitcher({
               }
             `}
           >
-            <span className="text-base">{detail.avatar}</span>
+            {isHuman && user?.imageUrl ? (
+              <img 
+                src={user.imageUrl} 
+                alt={user.fullName || "You"} 
+                className="h-5 w-5 rounded-full object-cover"
+              />
+            ) : (
+              <span className="text-base">{detail.avatar}</span>
+            )}
             <span>{detail.name}</span>
           </button>
         )

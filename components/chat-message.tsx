@@ -3,6 +3,9 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Edit2, Trash2, Check, X } from 'lucide-react'
+import { useUser } from '@clerk/nextjs'
+
+const HUMAN_PERSONA_ID = "human"
 
 interface ChatMessageProps {
   message: {
@@ -23,8 +26,10 @@ export default function ChatMessage({
   onEdit,
   onDelete,
 }: ChatMessageProps) {
+  const { user } = useUser()
   const [isEditing, setIsEditing] = useState(false)
   const [editText, setEditText] = useState(message.message)
+  const isHuman = message.persona === HUMAN_PERSONA_ID
 
   const timeString = message.timestamp.toLocaleTimeString([], {
     hour: '2-digit',
@@ -46,9 +51,17 @@ export default function ChatMessage({
   return (
     <div className="flex gap-3 group">
       <div
-        className={`h-8 w-8 rounded-full bg-gradient-to-br ${personaDetails.color} flex items-center justify-center text-sm flex-shrink-0`}
+        className={`h-8 w-8 rounded-full bg-gradient-to-br ${personaDetails.color} flex items-center justify-center text-sm flex-shrink-0 overflow-hidden`}
       >
-        {personaDetails.avatar}
+        {isHuman && user?.imageUrl ? (
+          <img 
+            src={user.imageUrl} 
+            alt={user.fullName || "You"} 
+            className="h-8 w-8 rounded-full object-cover"
+          />
+        ) : (
+          <span>{personaDetails.avatar}</span>
+        )}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 justify-between">

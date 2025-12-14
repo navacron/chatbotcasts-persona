@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Check, Search } from 'lucide-react'
+import { Check, Search, User } from 'lucide-react'
 import { Input } from '@/components/ui/input'
+import { useUser } from '@clerk/nextjs'
 
 interface Persona {
   id: string
@@ -57,11 +58,15 @@ export default function PersonaSelector({
   selected,
   onChange,
 }: PersonaSelectorProps) {
+  const { user } = useUser()
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [publicPersonas, setPublicPersonas] = useState<Persona[]>([])
   const [myPersonas, setMyPersonas] = useState<Persona[]>([])
   const [loading, setLoading] = useState(true)
+  
+  // Human persona ID constant
+  const HUMAN_PERSONA_ID = 'human'
 
   // Fetch personas from API
   useEffect(() => {
@@ -92,6 +97,10 @@ export default function PersonaSelector({
     } else {
       onChange([...selected, id])
     }
+  }
+  
+  const handleToggleHuman = () => {
+    handleToggle(HUMAN_PERSONA_ID)
   }
 
   const hostPersonas = publicPersonas.filter(p => p.name.toLowerCase().includes('host'))
@@ -171,6 +180,69 @@ export default function PersonaSelector({
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-10 bg-white border-border/50 text-foreground placeholder:text-muted-foreground/60"
         />
+      </div>
+
+      {/* Human Persona Option */}
+      <div className="space-y-2">
+        <h3 className="text-sm font-semibold text-foreground">You</h3>
+        <button
+          onClick={handleToggleHuman}
+          onMouseEnter={() => setHoveredId(HUMAN_PERSONA_ID)}
+          onMouseLeave={() => setHoveredId(null)}
+          className="relative group w-full"
+        >
+          <div
+            className={`
+              h-24 px-4 py-3 rounded-lg border-2 transition-all duration-200
+              flex items-center gap-3
+              ${
+                selected.includes(HUMAN_PERSONA_ID)
+                  ? 'border-primary bg-primary/10'
+                  : 'border-border/50 bg-background hover:border-border'
+              }
+              ${hoveredId === HUMAN_PERSONA_ID ? 'shadow-lg' : ''}
+            `}
+          >
+            {/* Avatar */}
+            <div className="flex-shrink-0">
+              <div
+                className={`
+                  h-12 w-12 rounded-full flex items-center justify-center text-xl
+                  bg-gradient-to-br from-indigo-500 to-purple-600
+                `}
+              >
+                {user?.imageUrl ? (
+                  <img 
+                    src={user.imageUrl} 
+                    alt={user.fullName || 'You'} 
+                    className="h-12 w-12 rounded-full object-cover"
+                  />
+                ) : (
+                  <User className="h-6 w-6 text-white" />
+                )}
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 text-left">
+              <div className="font-semibold text-foreground text-sm">
+                {user?.fullName || user?.firstName || 'You'}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Participate in the conversation as yourself
+              </div>
+            </div>
+
+            {/* Checkbox */}
+            {selected.includes(HUMAN_PERSONA_ID) && (
+              <div className="flex-shrink-0">
+                <div className="h-5 w-5 rounded bg-primary flex items-center justify-center">
+                  <Check className="h-3 w-3 text-primary-foreground" />
+                </div>
+              </div>
+            )}
+          </div>
+        </button>
       </div>
 
       {loading ? (

@@ -24,8 +24,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing required fields: currentPersonaId, allPersonaIds" }, { status: 400 })
     }
 
+    // Don't allow generating responses for the human persona
+    if (currentPersonaId === "human") {
+      return NextResponse.json({ error: "Cannot generate AI response for human persona" }, { status: 400 })
+    }
+
+    // Filter out human persona from database query
+    const personaIdsToFetch = allPersonaIds.filter((id: string) => id !== "human")
+
     // Fetch persona details from database
-    const { data: personas, error: personasError } = await supabase.from("persona").select("*").in("id", allPersonaIds)
+    const { data: personas, error: personasError } = await supabase.from("persona").select("*").in("id", personaIdsToFetch)
 
     if (personasError) {
       console.error("[v0] Error fetching personas:", personasError)

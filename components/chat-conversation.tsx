@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import ChatMessage from "./chat-message"
 import PersonaSwitcher from "./persona-switcher"
 import ConversationControls from "./conversation-controls"
-import { Send, Share2, Code } from "lucide-react"
+import { Send, Share2, Code, User } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useUser } from "@clerk/nextjs"
 
 const MOCK_CONVERSATION = [
   {
@@ -40,9 +42,13 @@ interface ChatConversationProps {
   onPublish?: (publishData: any) => void // Updated signature to pass conversation data
 }
 
+const HUMAN_PERSONA_ID = "human"
+
 export default function ChatConversation({ data, onPublish }: ChatConversationProps) {
+  const { user } = useUser()
   const [personaDetails, setPersonaDetails] = useState<any>({})
   const [isLoadingPersonas, setIsLoadingPersonas] = useState(true)
+  const [userInput, setUserInput] = useState("")
 
   const [messages, setMessages] = useState<any[]>(() => {
     console.log("[v0] ChatConversation received data:", data)
@@ -90,6 +96,18 @@ export default function ChatConversation({ data, onPublish }: ChatConversationPr
           }
         })
 
+        // Add human persona details
+        if (user) {
+          detailsMap[HUMAN_PERSONA_ID] = {
+            id: HUMAN_PERSONA_ID,
+            name: user.fullName || user.firstName || "You",
+            avatar: user.imageUrl || "👤",
+            color: "from-indigo-500 to-purple-600",
+            title: "You",
+            isHuman: true,
+          }
+        }
+
         console.log("[v0] Loaded persona details:", detailsMap)
         setPersonaDetails(detailsMap)
       } catch (error) {
@@ -100,7 +118,7 @@ export default function ChatConversation({ data, onPublish }: ChatConversationPr
     }
 
     fetchPersonas()
-  }, [])
+  }, [user])
 
   const getAvatarForPersona = (name: string): string => {
     const lowerName = name.toLowerCase()
@@ -110,6 +128,7 @@ export default function ChatConversation({ data, onPublish }: ChatConversationPr
     if (lowerName.includes("jane")) return "🌍"
     if (lowerName.includes("bill")) return "💡"
     if (lowerName.includes("host")) return "🎙️"
+    if (lowerName.includes("human") || lowerName === "you") return "👤"
     return "👤"
   }
 
@@ -135,6 +154,34 @@ export default function ChatConversation({ data, onPublish }: ChatConversationPr
   const handleSelectSpeaker = (personaId: string) => {
     setNextSpeaker(personaId)
   }
+
+  const handleSendUserMessage = () => {
+    if (!userInput.trim() || !user) return
+
+    const maxId = messages.length > 0 ? Math.max(...messages.map((m) => m.id || 0)) : 0
+    const newMessage = {
+      id: maxId + 1,
+      persona: HUMAN_PERSONA_ID,
+      name: user.fullName || user.firstName || "You",
+      message: userInput.trim(),
+      citations: [],
+      timestamp: new Date(),
+    }
+
+    setMessages([...messages, newMessage])
+    setUserInput("")
+    setNextSpeaker(null)
+  }
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault()
+      handleSendUserMessage()
+    }
+  }
+
+  const isHumanSelected = nextSpeaker === HUMAN_PERSONA_ID
+  const isHumanInPersonas = personas.includes(HUMAN_PERSONA_ID)
 
   const handleGenerateResponse = async () => {
     const speakerToUse = nextSpeaker || personas[0]
@@ -387,14 +434,41 @@ export default function ChatConversation({ data, onPublish }: ChatConversationPr
             </div>
           )}
 
-          <Button
-            onClick={handleGenerateResponse}
-            disabled={isGenerating || (turnMode === "manual" && !nextSpeaker)}
-            className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90 disabled:opacity-50"
-          >
-            <Send className="h-4 w-4 mr-2" />
-            {isGenerating ? "Generating..." : "Generate Response"}
-          </Button>
+          {/* Show text input when human persona is selected */}
+          {isHumanSelected && isHumanInPersonas ? (
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <Input
+                  value={userInput}
+                  onChange={(e) => setUserInput(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Type your message..."
+                  className="flex-1"
+                  disabled={!user}
+                />
+                <Button
+                  onClick={handleSendUserMessage}
+                  disabled={!userInput.trim() || !user}
+                  className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-90 disabled:opacity-50"
+                >
+                  <Send className="h-4 w-4 mr-2" />
+                  Send
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Press Enter to send your message as {user?.fullName || user?.firstName || "you"}
+              </p>
+            </div>
+          ) : (
+            <Button
+              onClick={handleGenerateResponse}
+              disabled={isGenerating || (turnMode === "manual" && !nextSpeaker)}
+              className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90 disabled:opacity-50"
+            >
+              <Send className="h-4 w-4 mr-2" />
+              {isGenerating ? "Generating..." : "Generate Response"}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -405,6 +479,7 @@ export default function ChatConversation({ data, onPublish }: ChatConversationPr
             {personas.map((personaId: string) => {
               const detail = personaDetails[personaId]
               if (!detail) return null
+              const isHuman = personaId === HUMAN_PERSONA_ID
 
               return (
                 <div
@@ -412,9 +487,17 @@ export default function ChatConversation({ data, onPublish }: ChatConversationPr
                   className="flex items-center gap-3 p-3 bg-secondary rounded-lg border border-border/50"
                 >
                   <div
-                    className={`h-8 w-8 rounded-full bg-gradient-to-br ${detail.color} flex items-center justify-center text-sm flex-shrink-0`}
+                    className={`h-8 w-8 rounded-full bg-gradient-to-br ${detail.color} flex items-center justify-center text-sm flex-shrink-0 overflow-hidden`}
                   >
-                    {detail.avatar}
+                    {isHuman && user?.imageUrl ? (
+                      <img 
+                        src={user.imageUrl} 
+                        alt={user.fullName || "You"} 
+                        className="h-8 w-8 rounded-full object-cover"
+                      />
+                    ) : (
+                      <span>{detail.avatar}</span>
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-sm text-foreground">{detail.name}</div>
