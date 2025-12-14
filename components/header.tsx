@@ -16,7 +16,7 @@ export default function Header() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
-            <Image src="/images/chatbotcastssm.webp" alt="ChatBotCasts" width={32} height={32} className="h-8 w-8" />
+            <Image src="/images/ChatBotCastsSm.png" alt="ChatBotCasts" width={64} height={64} className="h-8 w-8" />
             <span className="font-bold text-lg text-foreground">ChatBotCasts</span>
           </Link>
 
