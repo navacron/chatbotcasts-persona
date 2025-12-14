@@ -170,7 +170,30 @@ export default function ChatConversation({ data, onPublish }: ChatConversationPr
 
     setMessages([...messages, newMessage])
     setUserInput("")
-    setNextSpeaker(null)
+    
+    // Auto-select the next non-human persona if human is in the conversation
+    if (isHumanInPersonas) {
+      const nonHumanPersonas = personas.filter((id) => id !== HUMAN_PERSONA_ID)
+      if (nonHumanPersonas.length > 0) {
+        // Find the last speaker (if any) and get the next non-human persona
+        const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null
+        const lastSpeakerId = lastMessage?.persona
+        
+        if (lastSpeakerId && lastSpeakerId !== HUMAN_PERSONA_ID) {
+          // Find the index of the last speaker in the non-human personas list
+          const lastSpeakerIndex = nonHumanPersonas.indexOf(lastSpeakerId)
+          const nextIndex = lastSpeakerIndex >= 0 
+            ? (lastSpeakerIndex + 1) % nonHumanPersonas.length 
+            : 0
+          setNextSpeaker(nonHumanPersonas[nextIndex])
+        } else {
+          // No previous speaker or last was human, select the first non-human persona
+          setNextSpeaker(nonHumanPersonas[0])
+        }
+      }
+    } else {
+      setNextSpeaker(null)
+    }
   }
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
