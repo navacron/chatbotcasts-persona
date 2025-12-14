@@ -45,7 +45,8 @@ interface ChatConversationProps {
 const HUMAN_PERSONA_ID = "human"
 
 export default function ChatConversation({ data, onPublish }: ChatConversationProps) {
-  const { user } = useUser()
+  const { user, isLoaded: isUserLoaded } = useUser()
+  const isLoggedIn = isUserLoaded && !!user
   const [personaDetails, setPersonaDetails] = useState<any>({})
   const [isLoadingPersonas, setIsLoadingPersonas] = useState(true)
   const [userInput, setUserInput] = useState("")
@@ -96,8 +97,8 @@ export default function ChatConversation({ data, onPublish }: ChatConversationPr
           }
         })
 
-        // Add human persona details
-        if (user) {
+        // Add human persona details only if user is logged in
+        if (isLoggedIn && user) {
           detailsMap[HUMAN_PERSONA_ID] = {
             id: HUMAN_PERSONA_ID,
             name: user.fullName || user.firstName || "You",
@@ -118,7 +119,7 @@ export default function ChatConversation({ data, onPublish }: ChatConversationPr
     }
 
     fetchPersonas()
-  }, [user])
+  }, [user, isLoggedIn])
 
   const getAvatarForPersona = (name: string): string => {
     const lowerName = name.toLowerCase()
@@ -156,7 +157,7 @@ export default function ChatConversation({ data, onPublish }: ChatConversationPr
   }
 
   const handleSendUserMessage = () => {
-    if (!userInput.trim() || !user) return
+    if (!userInput.trim() || !isLoggedIn || !user) return
 
     const maxId = messages.length > 0 ? Math.max(...messages.map((m) => m.id || 0)) : 0
     const newMessage = {
@@ -457,8 +458,8 @@ export default function ChatConversation({ data, onPublish }: ChatConversationPr
             </div>
           )}
 
-          {/* Show text input when human persona is selected */}
-          {isHumanSelected && isHumanInPersonas ? (
+          {/* Show text input when human persona is selected and user is logged in */}
+          {isHumanSelected && isHumanInPersonas && isLoggedIn ? (
             <div className="space-y-2">
               <div className="flex gap-2">
                 <Input
@@ -471,7 +472,7 @@ export default function ChatConversation({ data, onPublish }: ChatConversationPr
                 />
                 <Button
                   onClick={handleSendUserMessage}
-                  disabled={!userInput.trim() || !user}
+                  disabled={!userInput.trim() || !isLoggedIn || !user}
                   className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-90 disabled:opacity-50"
                 >
                   <Send className="h-4 w-4 mr-2" />
