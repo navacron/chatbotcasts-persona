@@ -71,18 +71,44 @@ export async function POST(req: Request) {
     eventType === "subscription.updated" ||
     eventType === "subscription.active"
   ) {
-    const { user_id, plan_id, status, id: subscription_id } = evt.data
+    // Extract user_id from payer.user_id (Clerk subscription structure)
+    const user_id = evt.data.payer?.user_id
+    const subscription_id = evt.data.id
+    const status = evt.data.status
+    
+    // Get the active plan from items array
+    const activeItem = evt.data.items?.find((item: any) => item.status === "active")
+    const plan_id = activeItem?.plan?.slug || activeItem?.plan_id || "free"
 
     if (!user_id) {
-      console.error("[clerk-subscription-webhook] No user_id in subscription event")
+      console.error("[clerk-subscription-webhook] No user_id in subscription event", {
+        payer: evt.data.payer,
+        data: evt.data,
+      })
       return NextResponse.json({ error: "No user_id in subscription event" }, { status: 400 })
     }
+
+    console.log("[clerk-subscription-webhook] Processing subscription:", {
+      user_id,
+      subscription_id,
+      plan_id,
+      status,
+      activeItems: evt.data.items?.filter((item: any) => item.status === "active").length,
+    })
 
     // Determine credit limit based on plan
     // Free plan: 10 credits/month
     // Any paid plan: 1000 credits/month
-    const isSubscribed = plan_id && plan_id !== "free"
+    // Check if plan_id contains "free" (could be "free" or "free_user")
+    const isSubscribed = plan_id && !plan_id.includes("free")
     const monthlyCreditLimit = isSubscribed ? 1000 : 10
+
+    console.log("[clerk-subscription-webhook] Updating user:", {
+      user_id,
+      plan_id,
+      isSubscribed,
+      monthlyCreditLimit,
+    })
 
     // Update user subscription info
     const { error: updateError } = await supabase
@@ -122,7 +148,8 @@ export async function POST(req: Request) {
 
   // Handle subscription past due
   if (eventType === "subscription.pastDue") {
-    const { user_id, status } = evt.data
+    const user_id = evt.data.payer?.user_id
+    const status = evt.data.status
 
     if (!user_id) {
       console.error("[clerk-subscription-webhook] No user_id in past due event")
@@ -158,10 +185,14 @@ export async function POST(req: Request) {
   // Handle subscription item ended (this is when a subscription period ends, often triggering renewal)
   // When a subscription item ends, a new one is usually created, which triggers subscriptionItem.created
   if (eventType === "subscriptionItem.ended") {
-    const { user_id, plan_id } = evt.data
+    // For subscriptionItem events, user_id might be in the subscription object or payer
+    const user_id = evt.data.subscription?.payer?.user_id || evt.data.payer?.user_id
+    const plan_id = evt.data.plan?.slug || evt.data.plan_id
 
     if (!user_id) {
-      console.error("[clerk-subscription-webhook] No user_id in subscriptionItem.ended event")
+      console.error("[clerk-subscription-webhook] No user_id in subscriptionItem.ended event", {
+        data: evt.data,
+      })
       return NextResponse.json({ error: "No user_id in subscriptionItem.ended event" }, { status: 400 })
     }
 
@@ -227,10 +258,15 @@ export async function POST(req: Request) {
 
   // Handle subscription item created (new subscription or renewal)
   if (eventType === "subscriptionItem.created" || eventType === "subscriptionItem.active") {
-    const { user_id, plan_id, subscription_id } = evt.data
+    // For subscriptionItem events, user_id might be in the subscription object or payer
+    const user_id = evt.data.subscription?.payer?.user_id || evt.data.payer?.user_id
+    const subscription_id = evt.data.subscription?.id || evt.data.subscription_id
+    const plan_id = evt.data.plan?.slug || evt.data.plan_id
 
     if (!user_id) {
-      console.error("[clerk-subscription-webhook] No user_id in subscriptionItem event")
+      console.error("[clerk-subscription-webhook] No user_id in subscriptionItem event", {
+        data: evt.data,
+      })
       return NextResponse.json({ error: "No user_id in subscriptionItem event" }, { status: 400 })
     }
 
@@ -275,10 +311,13 @@ export async function POST(req: Request) {
 
   // Handle subscription item canceled
   if (eventType === "subscriptionItem.canceled") {
-    const { user_id } = evt.data
+    // For subscriptionItem events, user_id might be in the subscription object or payer
+    const user_id = evt.data.subscription?.payer?.user_id || evt.data.payer?.user_id
 
     if (!user_id) {
-      console.error("[clerk-subscription-webhook] No user_id in cancellation event")
+      console.error("[clerk-subscription-webhook] No user_id in cancellation event", {
+        data: evt.data,
+      })
       return NextResponse.json({ error: "No user_id in cancellation event" }, { status: 400 })
     }
 
