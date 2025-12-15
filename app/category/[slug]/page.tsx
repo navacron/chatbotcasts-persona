@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import CategoryPageClient from "@/components/category-page-client"
 import { createClient } from "@/lib/supabase/server"
+import { extractUsernameFromEmail } from "@/lib/user-utils"
 
 interface PageProps {
   params: Promise<{
@@ -41,7 +42,7 @@ async function getCategory(slug: string) {
         user_id,
         feature_image,
         users!conversations_user_id_fkey (
-          display_name
+          email
         )
       `,
       )
@@ -94,7 +95,8 @@ async function getCategory(slug: string) {
     const conversationsWithPersonas = conversationsData.map((conv) => {
       const participants = personasByConversation.get(conv.id) || []
       const userData = (conv as any).users
-      const displayName = userData?.display_name
+      const email = userData?.email
+      const username = extractUsernameFromEmail(email)
 
       return {
         id: conv.id,
@@ -103,7 +105,7 @@ async function getCategory(slug: string) {
         slug: conv.slug,
         participants,
         views: conv.view_count || 0,
-        author: displayName || "Anonymous",
+        author: username,
         createdAt: conv.created_at,
         categoryId: conv.category_id,
         featureImage: conv.feature_image,

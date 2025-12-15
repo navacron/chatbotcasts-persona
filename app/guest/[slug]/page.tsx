@@ -5,6 +5,7 @@ import Header from "@/components/header"
 import ConversationCard from "@/components/conversation-card"
 import { ExternalLink } from "lucide-react"
 import Link from "next/link"
+import { extractUsernameFromEmail } from "@/lib/user-utils"
 
 interface GuestPageProps {
   params: Promise<{
@@ -63,7 +64,7 @@ async function getPersonaWithConversations(slug: string) {
       view_count,
       feature_image,
       created_at,
-      users!conversations_user_id_fkey(display_name)
+      users!conversations_user_id_fkey(email)
     `,
     )
     .in("id", conversationIds)
@@ -93,16 +94,21 @@ async function getPersonaWithConversations(slug: string) {
   })
 
   // Format conversations
-  const formattedConversations = conversations?.map((conv: any) => ({
-    id: conv.id,
-    title: conv.title,
-    description: conv.description,
-    slug: conv.slug,
-    views: conv.view_count || 0,
-    author: conv.users?.display_name || "Anonymous",
-    participants: personasByConversation.get(conv.id) || [],
-    featureImage: conv.feature_image,
-  }))
+  const formattedConversations = conversations?.map((conv: any) => {
+    const email = conv.users?.email
+    const username = extractUsernameFromEmail(email)
+
+    return {
+      id: conv.id,
+      title: conv.title,
+      description: conv.description,
+      slug: conv.slug,
+      views: conv.view_count || 0,
+      author: username,
+      participants: personasByConversation.get(conv.id) || [],
+      featureImage: conv.feature_image,
+    }
+  })
 
   return {
     persona,

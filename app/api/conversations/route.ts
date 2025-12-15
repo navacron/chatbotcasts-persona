@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { extractUsernameFromEmail } from "@/lib/user-utils"
 
 export async function GET(request: NextRequest) {
   try {
@@ -89,7 +90,8 @@ export async function GET(request: NextRequest) {
     const conversationsWithPersonas = conversationsData.map((conv) => {
       const participants = personasByConversation.get(conv.id) || []
       const userData = (conv as any).users
-      const displayName = userData?.display_name
+      const email = userData?.email
+      const username = extractUsernameFromEmail(email)
 
       return {
         id: conv.id,
@@ -98,7 +100,7 @@ export async function GET(request: NextRequest) {
         slug: conv.slug,
         participants,
         views: conv.view_count || 0,
-        author: displayName || "Anonymous",
+        author: username,
         createdAt: conv.created_at,
         categoryId: conv.category_id,
         featureImage: conv.feature_image,

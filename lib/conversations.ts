@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { extractUsernameFromEmail } from "@/lib/user-utils"
 
 export async function getConversationById(id: string) {
   try {
@@ -9,7 +10,7 @@ export async function getConversationById(id: string) {
       .from("conversations")
       .select(`
         *,
-        users!conversations_user_id_fkey(display_name)
+        users!conversations_user_id_fkey(email)
       `)
       .eq("id", id)
       .maybeSingle()
@@ -65,7 +66,7 @@ export async function getConversationBySlug(slug: string) {
       .from("conversations")
       .select(`
         *,
-        users!conversations_user_id_fkey(display_name),
+        users!conversations_user_id_fkey(email),
         category!conversations_category_id_fkey(id, name, slug)
       `)
       .eq("slug", slug)

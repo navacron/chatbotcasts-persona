@@ -10,6 +10,7 @@ import Image from "next/image"
 import PlayAllControl from "@/components/play-all-control"
 import Link from "next/link"
 import { useUser } from "@clerk/nextjs"
+import { extractUsernameFromEmail } from "@/lib/user-utils"
 
 interface Message {
   id: number
@@ -184,7 +185,7 @@ export default function ConversationDisplay({ conversation, personas, user, cate
         <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mb-6">
           <div className="flex items-center gap-2">
             <User className="h-4 w-4" />
-            <span>{clerkUser?.firstName || clerkUser?.lastName || "Anonymous"}</span>
+            <span>{extractUsernameFromEmail(user?.email || clerkUser?.primaryEmailAddress?.emailAddress)}</span>
           </div>
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4" />

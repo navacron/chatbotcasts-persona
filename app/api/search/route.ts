@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { generateEmbedding } from "@/lib/embeddings"
+import { extractUsernameFromEmail } from "@/lib/user-utils"
 
 export async function GET(request: NextRequest) {
   try {
@@ -43,7 +44,7 @@ export async function GET(request: NextRequest) {
         view_count,
         feature_image,
         users!conversations_user_id_fkey (
-          display_name
+          email
         )
       `)
       .in("id", conversationIds)
@@ -78,17 +79,22 @@ export async function GET(request: NextRequest) {
     const similarityMap = new Map(results.map((r: any) => [r.id, r.similarity]))
 
     const conversationsWithData =
-      conversations?.map((conv: any) => ({
-        id: conv.id,
-        title: conv.title,
-        description: conv.description,
-        slug: conv.slug,
-        participants: personasByConversation.get(conv.id) || [],
-        views: conv.view_count || 0,
-        author: (conv as any).users?.display_name || "Anonymous",
-        featureImage: conv.feature_image,
-        similarity: similarityMap.get(conv.id),
-      })) || []
+      conversations?.map((conv: any) => {
+        const email = (conv as any).users?.email
+        const username = extractUsernameFromEmail(email)
+
+        return {
+          id: conv.id,
+          title: conv.title,
+          description: conv.description,
+          slug: conv.slug,
+          participants: personasByConversation.get(conv.id) || [],
+          views: conv.view_count || 0,
+          author: username,
+          featureImage: conv.feature_image,
+          similarity: similarityMap.get(conv.id),
+        }
+      }) || []
 
     // Sort by similarity score (highest first)
     conversationsWithData.sort((a, b) => (b.similarity || 0) - (a.similarity || 0))
