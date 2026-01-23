@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /dashboard/
+Disallow: /profile/
+Disallow: /create/
+Disallow: /auth/
+Disallow: /billing/
+Disallow: /test-prompt/
+
+Sitemap: https://chatbotcasts.com/sitemap.xml
+

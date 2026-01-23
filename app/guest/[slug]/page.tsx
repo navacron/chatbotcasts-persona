@@ -131,6 +131,17 @@ export async function generateMetadata({ params }: GuestPageProps): Promise<Meta
   return {
     title: `${persona.name} - Guest Profile | ChatBotCasts`,
     description: persona.prompt?.substring(0, 160) || `Explore conversations featuring ${persona.name}`,
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-video-preview": -1,
+        "max-image-preview": "large",
+        "max-snippet": -1,
+      },
+    },
     openGraph: {
       title: `${persona.name} - Guest Profile`,
       description: persona.prompt?.substring(0, 160) || `Explore conversations featuring ${persona.name}`,

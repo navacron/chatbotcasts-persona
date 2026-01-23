@@ -15,6 +15,17 @@ export const metadata: Metadata = {
   title: "ChatBotCasts",
   description: "Create engaging conversations between AI personas on any topic",
   generator: "v0.app",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
   icons: {
     icon: [
       {

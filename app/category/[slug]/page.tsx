@@ -138,6 +138,17 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       category.description ||
       `Explore ${conversationCount} AI-powered conversations about ${category.name}. Engage with expert perspectives and diverse viewpoints.`,
     keywords: [category.name, "AI conversations", "podcast", "discussions", "ChatBotCasts"],
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-video-preview": -1,
+        "max-image-preview": "large",
+        "max-snippet": -1,
+      },
+    },
     openGraph: {
       title: `${category.name} Conversations`,
       description:
