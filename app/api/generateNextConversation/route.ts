@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { generateText } from "ai"
 import { createPerplexity } from "@ai-sdk/perplexity"
+import { stripMarkdown } from "@/lib/markdown-utils"
 
 export const maxDuration = 30
 
@@ -61,8 +62,6 @@ export async function POST(request: Request) {
 <role>${currentPersona.prompt || currentPersona.name}</role>
 You are participating in a spoken, podcast-style conversation.
 
-You are participating in a spoken podcast conversation.
-
 Your goal is NOT to agree by default. You should:
 - Add new insight
 - Challenge assumptions when appropriate
@@ -70,6 +69,13 @@ Your goal is NOT to agree by default. You should:
 - Build on what was said without repeating it
 
 Stay in character at all times and respond naturally as if speaking on a live podcast.
+
+IMPORTANT FORMATTING RULES:
+- Use plain text only - NO markdown formatting
+- Do NOT use ** for bold, * for italic, or any markdown syntax
+- Do NOT use [1][2] citation markers in the text - citations will be handled separately
+- Write naturally as if speaking aloud in a podcast
+- Use emphasis through word choice and phrasing, not formatting
 
 Output your answer as ${currentPersona.name} would respond. You will be discussing the topic of <topic>${title}</topic>.
 
@@ -99,12 +105,15 @@ ${conversationContext ? `Here is the conversation so far:\n\n${conversationConte
     console.log("[v0] Perplexity generated:", result.text)
 
     const responseBody = (result.response as any)?.body
-    const fullContent = responseBody?.choices?.[0]?.message?.content || result.text
+    const rawContent = responseBody?.choices?.[0]?.message?.content || result.text
     const citations = responseBody?.citations || []
+
+    // Strip markdown formatting to make the output more user-friendly
+    const cleanedContent = stripMarkdown(rawContent)
 
     return NextResponse.json({
       success: true,
-      content: fullContent,
+      content: cleanedContent,
       citations: citations,
       personaId: currentPersonaId,
       personaName: currentPersona.name,
