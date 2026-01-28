@@ -102,6 +102,55 @@ export default function ConversationDisplay({ conversation, personas, user, cate
     router.push(`/create?conversationId=${conversation.id}`)
   }
 
+  // Render message content and convert inline [1], [2], ... into clickable citation links
+  const renderMessageWithCitations = (message: Message) => {
+    const text = message.content || ""
+    const citations = message.citations || []
+    const parts: (string | JSX.Element)[] = []
+
+    const regex = /\[(\d+)\]/g
+    let lastIndex = 0
+    let match: RegExpExecArray | null
+
+    while ((match = regex.exec(text)) !== null) {
+      const matchIndex = match.index
+
+      // Push text before the citation
+      if (matchIndex > lastIndex) {
+        parts.push(text.slice(lastIndex, matchIndex))
+      }
+
+      const citationNumber = parseInt(match[1], 10)
+      const href = citations[citationNumber - 1]
+
+      if (href) {
+        parts.push(
+          <a
+            key={`msg-${message.id}-cite-${citationNumber}-${matchIndex}`}
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:underline"
+          >
+            [{citationNumber}]
+          </a>,
+        )
+      } else {
+        // No matching citation URL, keep the raw text
+        parts.push(match[0])
+      }
+
+      lastIndex = regex.lastIndex
+    }
+
+    // Push any remaining text after the last citation
+    if (lastIndex < text.length) {
+      parts.push(text.slice(lastIndex))
+    }
+
+    return parts
+  }
+
   const getFirstYouTubeVideoId = () => {
     for (const message of messages) {
       if (message.citations && message.citations.length > 0) {
@@ -246,10 +295,9 @@ export default function ConversationDisplay({ conversation, personas, user, cate
               <div className="ml-11">
                 <Card className="bg-muted/30 border-0 shadow-none">
                   <div className="p-6">
-                    <div
-                      className="prose prose-sm max-w-none leading-relaxed"
-                      dangerouslySetInnerHTML={{ __html: msg.content }}
-                    />
+                    <div className="prose prose-sm max-w-none leading-relaxed">
+                      {renderMessageWithCitations(msg)}
+                    </div>
 
                     {msg.citations && msg.citations.length > 0 && (
                       <div className="mt-4 pt-4 border-t border-border/50">
