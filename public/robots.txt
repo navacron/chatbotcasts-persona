@@ -5,7 +5,6 @@ Disallow: /dashboard/
 Disallow: /profile/
 Disallow: /create/
 Disallow: /auth/
-Disallow: /billing/
 Disallow: /test-prompt/
 
 Sitemap: https://www.chatbotcasts.com/sitemap.xml
