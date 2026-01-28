@@ -49,15 +49,22 @@ export default function ChatMessage({
     setIsEditing(false)
   }
 
-  // Render message text and turn [1], [2], ... into clickable citation links
+  // Render message text and turn [1], [2], ... into clickable citation links.
+  // If there are citations but no inline markers, append [1][2]... at the end.
   const renderMessageWithCitations = () => {
-    const text = editText
+    const text = isEditing ? editText : message.message
     const citations = message.citations || []
-    const parts: (string | JSX.Element)[] = []
+    
+    // If no citations, just return the text as-is
+    if (!citations || citations.length === 0) {
+      return text
+    }
 
+    const parts: (string | JSX.Element)[] = []
     const regex = /\[(\d+)\]/g
     let lastIndex = 0
     let match: RegExpExecArray | null
+    let matchCount = 0
 
     while ((match = regex.exec(text)) !== null) {
       const matchIndex = match.index
@@ -73,15 +80,16 @@ export default function ChatMessage({
       if (href) {
         parts.push(
           <a
-            key={`msg-${message.id}-cite-${citationNumber}-${matchIndex}`}
+            key={`msg-${message.id}-cite-${citationNumber}-${matchIndex}-${matchCount}`}
             href={href}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-primary hover:underline"
+            className="text-primary hover:underline font-medium"
           >
             [{citationNumber}]
           </a>,
         )
+        matchCount++
       } else {
         // No matching citation URL, keep the raw text
         parts.push(match[0])
@@ -93,6 +101,28 @@ export default function ChatMessage({
     // Push any remaining text after the last citation
     if (lastIndex < text.length) {
       parts.push(text.slice(lastIndex))
+    }
+
+    // If no matches were found in the text but we have citations,
+    // append [1][2]...[n] as linked citations at the end of the message.
+    if (parts.length === 0) {
+      parts.push(text)
+      parts.push(" ")
+
+      citations.forEach((href, idx) => {
+        const citationNumber = idx + 1
+        parts.push(
+          <a
+            key={`msg-${message.id}-auto-cite-${citationNumber}`}
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:underline font-medium"
+          >
+            [{citationNumber}]
+          </a>,
+        )
+      })
     }
 
     return parts
@@ -167,9 +197,30 @@ export default function ChatMessage({
             </div>
           </div>
         ) : (
-          <p className="text-sm text-foreground/80 mt-1 break-words">
-            {renderMessageWithCitations()}
-          </p>
+          <div className="mt-1 space-y-2">
+            <p className="text-sm text-foreground/80 break-words">
+              {renderMessageWithCitations()}
+            </p>
+
+            {message.citations && message.citations.length > 0 && (
+              <div className="mt-2 pt-2 border-t border-border/60">
+                <p className="text-xs font-semibold text-muted-foreground mb-1">Sources:</p>
+                <div className="flex flex-wrap gap-2">
+                  {message.citations.map((citation, idx) => (
+                    <a
+                      key={idx}
+                      href={citation}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                    >
+                      <span>[{idx + 1}]</span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>
