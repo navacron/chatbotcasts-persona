@@ -37,17 +37,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ]
 
-  // Fetch all public conversations for /posts/* URLs
+  // Fetch all public conversations for /posts/* URLs and all categories for /category/* URLs
   try {
     const supabase = await createClient()
 
-    const { data: conversations, error } = await supabase
+    const { data: conversations, error: conversationsError } = await supabase
       .from("conversations")
       .select("slug, updated_at, created_at, is_public")
       .eq("is_public", true)
 
-    if (error) {
-      console.error("[sitemap] Error fetching conversations:", error)
+    if (conversationsError) {
+      console.error("[sitemap] Error fetching conversations:", conversationsError)
+    }
+
+    const { data: categories, error: categoriesError } = await supabase
+      .from("category")
+      .select("slug, updated_at, created_at")
+
+    if (categoriesError) {
+      console.error("[sitemap] Error fetching categories:", categoriesError)
     }
 
     const postRoutes: MetadataRoute.Sitemap =
@@ -58,7 +66,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.8,
       })) || []
 
-    return [...staticRoutes, ...postRoutes]
+    const categoryRoutes: MetadataRoute.Sitemap =
+      categories?.map((cat) => ({
+        url: `${siteUrl}/category/${cat.slug}`,
+        lastModified: cat.updated_at ? new Date(cat.updated_at) : new Date(cat.created_at || new Date()),
+        changeFrequency: "weekly",
+        priority: 0.7,
+      })) || []
+
+    return [...staticRoutes, ...categoryRoutes, ...postRoutes]
   } catch (err) {
     console.error("[sitemap] Unexpected error:", err)
     // If anything fails, still return the static routes so sitemap.xml is valid
