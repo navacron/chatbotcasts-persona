@@ -14,6 +14,7 @@ interface ChatMessageProps {
     name: string
     message: string
     timestamp: Date
+    citations?: string[]
   }
   personaDetails: any
   onEdit?: (messageId: number, newText: string) => void
@@ -48,15 +49,64 @@ export default function ChatMessage({
     setIsEditing(false)
   }
 
+  // Render message text and turn [1], [2], ... into clickable citation links
+  const renderMessageWithCitations = () => {
+    const text = editText
+    const citations = message.citations || []
+    const parts: (string | JSX.Element)[] = []
+
+    const regex = /\[(\d+)\]/g
+    let lastIndex = 0
+    let match: RegExpExecArray | null
+
+    while ((match = regex.exec(text)) !== null) {
+      const matchIndex = match.index
+
+      // Push text before the citation
+      if (matchIndex > lastIndex) {
+        parts.push(text.slice(lastIndex, matchIndex))
+      }
+
+      const citationNumber = parseInt(match[1], 10)
+      const href = citations[citationNumber - 1]
+
+      if (href) {
+        parts.push(
+          <a
+            key={`msg-${message.id}-cite-${citationNumber}-${matchIndex}`}
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:underline"
+          >
+            [{citationNumber}]
+          </a>,
+        )
+      } else {
+        // No matching citation URL, keep the raw text
+        parts.push(match[0])
+      }
+
+      lastIndex = regex.lastIndex
+    }
+
+    // Push any remaining text after the last citation
+    if (lastIndex < text.length) {
+      parts.push(text.slice(lastIndex))
+    }
+
+    return parts
+  }
+
   return (
     <div className="flex gap-3 group">
       <div
         className={`h-8 w-8 rounded-full bg-gradient-to-br ${personaDetails.color} flex items-center justify-center text-sm flex-shrink-0 overflow-hidden`}
       >
         {isHuman && user?.imageUrl ? (
-          <img 
-            src={user.imageUrl} 
-            alt={user.fullName || "You"} 
+          <img
+            src={user.imageUrl}
+            alt={user.fullName || "You"}
             className="h-8 w-8 rounded-full object-cover"
           />
         ) : (
@@ -88,7 +138,7 @@ export default function ChatMessage({
             </Button>
           </div>
         </div>
-        
+
         {isEditing ? (
           <div className="mt-2 space-y-2">
             <textarea
@@ -117,7 +167,9 @@ export default function ChatMessage({
             </div>
           </div>
         ) : (
-          <p className="text-sm text-foreground/80 mt-1 break-words">{editText}</p>
+          <p className="text-sm text-foreground/80 mt-1 break-words">
+            {renderMessageWithCitations()}
+          </p>
         )}
       </div>
     </div>

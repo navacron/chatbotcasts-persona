@@ -1,5 +1,6 @@
 import { generateText } from "ai"
 import { createPerplexity } from "@ai-sdk/perplexity"
+import { stripMarkdown } from "@/lib/markdown-utils"
 
 export const maxDuration = 30
 
@@ -44,11 +45,14 @@ export async function POST(req: Request) {
     const fullContent = responseBody?.choices?.[0]?.message?.content || result.text
     const citations = responseBody?.citations || []
 
+    // Strip markdown formatting (bold, italics, links, etc.) but keep plain-text citations like [1], [2]
+    const cleanedText = stripMarkdown(fullContent)
+
     console.log("[v0] - Full content with citations:", fullContent)
     console.log("[v0] - Citations:", citations)
 
     return Response.json({
-      text: fullContent,
+      text: cleanedText,
       citations: citations,
       usage: result.usage,
       finishReason: result.finishReason,
