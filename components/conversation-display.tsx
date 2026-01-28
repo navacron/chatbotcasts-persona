@@ -278,7 +278,7 @@ export default function ConversationDisplay({ conversation, personas, user, cate
           const isFirstMessageFromPersona = index === 0 || messages[index - 1].personaId !== msg.personaId
 
           return (
-            <div key={msg.id}>
+            <div key={`${msg.id}-${index}`}>
               {/* Show persona name badge when speaker changes */}
               {isFirstMessageFromPersona && (
                 <div className="flex items-center gap-3 mb-3 mt-6">
