@@ -20,10 +20,8 @@ export function stripMarkdown(text: string): string {
 
   // Remove links but keep the text ([text](url) -> text)
   cleaned = cleaned.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-
-  // Remove citation markers like [1], [2], [3] that appear in the text
-  // These are handled separately in the citations array
-  cleaned = cleaned.replace(/\[\d+\]/g, "")
+  // NOTE: We intentionally keep bare citation markers like [1], [2]
+  // so that inline references remain visible to the user.
 
   // Remove heading markers (# ## ###)
   cleaned = cleaned.replace(/^#{1,6}\s+/gm, "")

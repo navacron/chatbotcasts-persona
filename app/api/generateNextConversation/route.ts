@@ -73,7 +73,7 @@ Stay in character at all times and respond naturally as if speaking on a live po
 IMPORTANT FORMATTING RULES:
 - Use plain text only - NO markdown formatting
 - Do NOT use ** for bold, * for italic, or any markdown syntax
-- Do NOT use [1][2] citation markers in the text - citations will be handled separately
+- If you reference sources, you MAY include inline numeric citations like [1], [2], [3] in the text
 - Write naturally as if speaking aloud in a podcast
 - Use emphasis through word choice and phrasing, not formatting
 
