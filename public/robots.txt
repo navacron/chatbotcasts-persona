@@ -8,5 +8,5 @@ Disallow: /auth/
 Disallow: /billing/
 Disallow: /test-prompt/
 
-Sitemap: https://chatbotcasts.com/sitemap.xml
+Sitemap: https://www.chatbotcasts.com/sitemap.xml
 
