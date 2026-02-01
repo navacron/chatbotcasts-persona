@@ -56,15 +56,21 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ conversations: [] })
     }
 
-    // Fetch personas for all conversations in a single query
+    // Fetch personas and human users for all conversations in a single query
     const conversationIds = conversationsData.map((c) => c.id)
     const { data: allPersonaLinks, error: personaError } = await supabase
       .from("conversation_personas")
       .select(`
         conversation_id,
+        persona_id,
+        user_id,
         persona:persona (
           id,
           name
+        ),
+        users:users (
+          id,
+          email
         )
       `)
       .in("conversation_id", conversationIds)
@@ -73,16 +79,23 @@ export async function GET(request: NextRequest) {
       console.error("[v0] Error fetching personas:", personaError)
     }
 
-    // Group personas by conversation
+    // Group personas and human users by conversation
     const personasByConversation = new Map<string, string[]>()
     allPersonaLinks?.forEach((link: any) => {
       const convId = link.conversation_id
-      const personaName = link.persona?.name
-      if (convId && personaName) {
+      if (convId) {
         if (!personasByConversation.has(convId)) {
           personasByConversation.set(convId, [])
         }
-        personasByConversation.get(convId)?.push(personaName)
+        // Add AI persona name if present
+        if (link.persona?.name) {
+          personasByConversation.get(convId)?.push(link.persona.name)
+        }
+        // Add "Human" for human users
+        if (link.user_id && link.users) {
+          const humanName = extractUsernameFromEmail(link.users.email) || "Human"
+          personasByConversation.get(convId)?.push(humanName)
+        }
       }
     })
 

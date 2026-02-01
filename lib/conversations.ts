@@ -24,10 +24,10 @@ export async function getConversationById(id: string) {
       return null
     }
 
-    // Fetch persona IDs from conversation_personas
+    // Fetch persona IDs and user IDs from conversation_personas
     const { data: conversationPersonas, error: personasError } = await supabase
       .from("conversation_personas")
-      .select("persona_id")
+      .select("persona_id, user_id")
       .eq("conversation_id", conversation.id)
 
     if (personasError) {
@@ -35,9 +35,11 @@ export async function getConversationById(id: string) {
       return null
     }
 
-    const personaIds = conversationPersonas?.map((cp) => cp.persona_id) || []
+    // Separate AI personas from human users
+    const personaIds = conversationPersonas?.filter((cp) => cp.persona_id).map((cp) => cp.persona_id) || []
+    const userIds = conversationPersonas?.filter((cp) => cp.user_id).map((cp) => cp.user_id) || []
 
-    // Fetch persona details
+    // Fetch persona details for AI personas
     const { data: personas, error: personaDetailsError } = await supabase
       .from("persona")
       .select("*")
@@ -47,9 +49,22 @@ export async function getConversationById(id: string) {
       console.error("[v0] Error fetching persona details:", personaDetailsError)
     }
 
+    // Fetch user details for human participants (if any)
+    const { data: humanUsers, error: usersError } = userIds.length > 0
+      ? await supabase
+          .from("users")
+          .select("id, email")
+          .in("id", userIds)
+      : { data: null, error: null }
+
+    if (usersError) {
+      console.error("[v0] Error fetching human user details:", usersError)
+    }
+
     return {
       conversation,
       personas: personas || [],
+      humanUsers: humanUsers || [],
       user: (conversation as any).users,
     }
   } catch (error) {
@@ -96,10 +111,10 @@ export async function getConversationBySlug(slug: string) {
       })
     }
 
-    // Fetch persona IDs from conversation_personas
+    // Fetch persona IDs and user IDs from conversation_personas
     const { data: conversationPersonas, error: personasError } = await supabase
       .from("conversation_personas")
-      .select("persona_id")
+      .select("persona_id, user_id")
       .eq("conversation_id", conversation.id)
 
     if (personasError) {
@@ -107,9 +122,11 @@ export async function getConversationBySlug(slug: string) {
       return null
     }
 
-    const personaIds = conversationPersonas?.map((cp) => cp.persona_id) || []
+    // Separate AI personas from human users
+    const personaIds = conversationPersonas?.filter((cp) => cp.persona_id).map((cp) => cp.persona_id) || []
+    const userIds = conversationPersonas?.filter((cp) => cp.user_id).map((cp) => cp.user_id) || []
 
-    // Fetch persona details
+    // Fetch persona details for AI personas
     const { data: personas, error: personaDetailsError } = await supabase
       .from("persona")
       .select("*")
@@ -117,6 +134,18 @@ export async function getConversationBySlug(slug: string) {
 
     if (personaDetailsError) {
       console.error("[v0] Error fetching persona details:", personaDetailsError)
+    }
+
+    // Fetch user details for human participants (if any)
+    const { data: humanUsers, error: usersError } = userIds.length > 0
+      ? await supabase
+          .from("users")
+          .select("id, email")
+          .in("id", userIds)
+      : { data: null, error: null }
+
+    if (usersError) {
+      console.error("[v0] Error fetching human user details:", usersError)
     }
 
     // Increment view count
@@ -128,6 +157,7 @@ export async function getConversationBySlug(slug: string) {
     return {
       conversation,
       personas: personas || [],
+      humanUsers: humanUsers || [],
       user: (conversation as any).users,
       category: (conversation as any).category,
     }

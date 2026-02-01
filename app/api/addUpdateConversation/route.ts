@@ -149,10 +149,32 @@ export async function POST(request: NextRequest) {
     }
 
     // Insert persona relationships into conversation_personas junction table
-    const personaRelations = personaIds.map((personaId: string) => ({
-      conversation_id: conversation.id,
-      persona_id: personaId,
-    }))
+    // Separate AI personas (from persona table) from human users (from users table)
+    const HUMAN_PERSONA_ID = "human"
+    
+    const personaRelations: Array<{
+      conversation_id: string
+      persona_id?: string
+      user_id?: string
+    }> = []
+
+    for (const personaId of personaIds) {
+      if (personaId === HUMAN_PERSONA_ID) {
+        // Human user: use user_id instead of persona_id
+        personaRelations.push({
+          conversation_id: conversation.id,
+          user_id: userId,
+          persona_id: null,
+        })
+      } else {
+        // AI persona: use persona_id
+        personaRelations.push({
+          conversation_id: conversation.id,
+          persona_id: personaId,
+          user_id: null,
+        })
+      }
+    }
 
     const { error: personaError } = await supabase.from("conversation_personas").insert(personaRelations)
 
