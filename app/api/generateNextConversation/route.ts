@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { generateText } from "ai"
 import { createPerplexity } from "@ai-sdk/perplexity"
-import { stripMarkdown } from "@/lib/markdown-utils"
+import { stripMarkdown, removeCitations } from "@/lib/markdown-utils"
 
 export const maxDuration = 30
 
@@ -58,22 +58,16 @@ export async function POST(request: Request) {
     }
 
     const systemPrompt = `You are going to assume this role in the role tag.
-
 <role>${currentPersona.prompt || currentPersona.name}</role>
-You are participating in a spoken, podcast-style conversation.
 
 Your goal is NOT to agree by default. You should:
 - Add new insight
 - Challenge assumptions when appropriate
 - Clarify tradeoffs, risks, or uncertainty
-- Build on what was said without repeating it
-
-Stay in character at all times and respond naturally as if speaking on a live podcast.
+- Keep your responses concise and to the point. Quick response upto 60 words, solid answer upto 150 words, deep dive upto 300 words.  
 
 IMPORTANT FORMATTING RULES:
 - Use plain text only - NO markdown formatting
-- Do NOT use ** for bold, * for italic, or any markdown syntax
-- If you reference sources, you MAY include inline numeric citations like [1], [2], [3] in the text
 - Write naturally as if speaking aloud in a podcast
 - Use emphasis through word choice and phrasing, not formatting
 
@@ -108,12 +102,60 @@ ${conversationContext ? `Here is the conversation so far:\n\n${conversationConte
     const rawContent = responseBody?.choices?.[0]?.message?.content || result.text
     const citations = responseBody?.citations || []
 
-    // Strip markdown formatting to make the output more user-friendly
+    // Strip markdown formatting and remove citations from Perplexity response
     const cleanedContent = stripMarkdown(rawContent)
+    const contentWithoutCitations = removeCitations(cleanedContent)
 
+    // Reformat using OpenAI for better readability
+    let reformattedContent = contentWithoutCitations
+    
+    // Check if OpenAI reformatting is enabled via environment variable
+    const enableOpenAIReformat = false
+    
+    if (process.env.OPENAI_API_KEY && enableOpenAIReformat) {
+      try {
+        const reformatPrompt = `The following is output from Perplexity. Reformat it to be more naturally converational. 
+        If there are many facts break them into smaller paragraphs, so it sounds like a conversation and not a fact dump
+Content to reformat:
+${contentWithoutCitations}`
+
+        const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+          },
+          body: JSON.stringify({
+            model: "gpt-4o-mini",
+            messages: [
+              {
+                role: "user",
+                content: reformatPrompt,
+              },
+            ],
+            max_tokens: 1000,
+            temperature: 0.7,
+          }),
+        })
+
+        if (!openaiResponse.ok) {
+          throw new Error(`OpenAI API error: ${openaiResponse.statusText}`)
+        }
+
+        const openaiData = await openaiResponse.json()
+        reformattedContent = openaiData.choices?.[0]?.message?.content || contentWithoutCitations
+        console.log("[v0] OpenAI reformatted content:", reformattedContent)
+      } catch (reformatError) {
+        console.error("[v0] Error reformatting with OpenAI, using original content:", reformatError)
+        // Fall back to original content if reformatting fails
+        reformattedContent = contentWithoutCitations
+      }
+    }
+
+    console.log("[v0] OpenAI generated:", reformattedContent)
     return NextResponse.json({
       success: true,
-      content: cleanedContent,
+      content: reformattedContent,
       citations: citations,
       personaId: currentPersonaId,
       personaName: currentPersona.name,

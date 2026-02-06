@@ -43,3 +43,16 @@ export function stripMarkdown(text: string): string {
   return cleaned
 }
 
+
+/**
+ * Removes citation markers like [1], [2], [3] from text
+ */
+export function removeCitations(text: string): string {
+  if (!text || typeof text !== "string") {
+    return text
+  }
+  
+  // Remove citation markers like [1], [2], [3], etc.
+  // This regex matches [ followed by one or more digits, followed by ]
+  return text.replace(/\[\d+\]/g, "").trim()
+}
