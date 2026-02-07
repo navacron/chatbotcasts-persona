@@ -78,16 +78,18 @@ export default function ConversationDisplay({ conversation, personas, user, cate
     return colors[index]
   }
 
-  const getPersonaInitials = (personaId: string) => {
+  const getPersonaInitials = (personaId: string, displayName?: string) => {
     const persona = personaMap.get(personaId)
-    if (!persona) return "?"
+    const name = persona?.name || displayName
+    if (!name || !name.trim()) return "?"
 
-    return persona.name
+    return name
       .split(" ")
       .map((n) => n[0])
+      .filter(Boolean)
       .join("")
       .toUpperCase()
-      .slice(0, 2)
+      .slice(0, 2) || "?"
   }
 
   const formatDate = (dateString: string) => {
@@ -284,7 +286,7 @@ export default function ConversationDisplay({ conversation, personas, user, cate
                 <div className="flex items-center gap-3 mb-3 mt-6">
                   <Avatar className="h-8 w-8 shrink-0">
                     <AvatarFallback className={getPersonaColor(msg.personaId)}>
-                      {getPersonaInitials(msg.personaId)}
+                      {getPersonaInitials(msg.personaId, msg.role)}
                     </AvatarFallback>
                   </Avatar>
                   <span className="font-semibold text-sm">{persona?.name || msg.role}</span>
