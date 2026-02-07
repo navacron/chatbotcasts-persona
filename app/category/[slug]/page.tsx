@@ -155,7 +155,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         category.description ||
         `Explore AI-powered conversations about ${category.name}. ${conversationCount} conversations available.`,
       type: "website",
-      url: `https://chatbotcasts.com/category/${slug}`,
+      url: `https://www.chatbotcasts.com/category/${slug}`,
       siteName: "ChatBotCasts",
     },
     twitter: {
@@ -167,7 +167,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       creator: "@chatbotcasts",
     },
     alternates: {
-      canonical: `https://chatbotcasts.com/category/${slug}`,
+      canonical: `https://www.chatbotcasts.com/category/${slug}`,
     },
   }
 }
