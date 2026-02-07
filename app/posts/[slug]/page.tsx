@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const conversation = data.conversation
   const description =
     conversation.description?.replace(/<[^>]*>/g, "").substring(0, 160) || "An AI-powered conversation"
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://chatbotcasts.com"
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.chatbotcasts.com"
   const pageUrl = `${siteUrl}/posts/${conversation.slug}`
 
   return {
