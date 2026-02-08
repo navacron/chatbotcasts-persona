@@ -43,8 +43,9 @@ export async function GET(request: NextRequest) {
     }
 
     const conversationIds = filtered.map((r: any) => r.id)
+    const similarityMap = new Map(filtered.map((r: any) => [r.id, r.similarity]))
 
-    // Fetch full conversation data with personas and author info
+    // Fetch matched conversation rows with root/version for grouping
     const { data: conversations, error: convError } = await supabase
       .from("conversations")
       .select(`
@@ -54,6 +55,8 @@ export async function GET(request: NextRequest) {
         slug,
         view_count,
         feature_image,
+        root_conversation_id,
+        version,
         users!conversations_user_id_fkey (
           email
         )
@@ -65,16 +68,90 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Failed to fetch conversation details" }, { status: 500 })
     }
 
-    // Fetch personas for all conversations
+    // Group by root; for each root keep the row with max similarity (best match)
+    type ConvRow = (typeof conversations)[0] & { root_conversation_id?: string | null; version?: number }
+    const byRoot = new Map<string, { best: ConvRow; similarity: number }>()
+    for (const conv of (conversations ?? []) as ConvRow[]) {
+      const rootId = conv.root_conversation_id ?? conv.id
+      const sim = Number(similarityMap.get(conv.id) ?? 0)
+      const existing = byRoot.get(rootId)
+      if (!existing || sim > existing.similarity) {
+        byRoot.set(rootId, { best: conv, similarity: sim })
+      }
+    }
+
+    const rootIds = Array.from(byRoot.keys())
+
+    // Fetch root rows for display (title, description, author, etc.)
+    const { data: rootRows, error: rootError } = await supabase
+      .from("conversations")
+      .select(`
+        id,
+        title,
+        description,
+        feature_image,
+        users!conversations_user_id_fkey ( email )
+      `)
+      .in("id", rootIds)
+
+    if (rootError) {
+      console.error("[v0] Error fetching root details:", rootError)
+      return NextResponse.json({ error: "Failed to fetch root details" }, { status: 500 })
+    }
+
+    const rootMeta = new Map(
+      (rootRows ?? []).map((r: any) => [
+        r.id,
+        {
+          title: r.title,
+          description: r.description,
+          featureImage: r.feature_image,
+          author: extractUsernameFromEmail(r.users?.email),
+        },
+      ])
+    )
+
+    // Fetch all versions (parts) for these roots: root row + any part with root_conversation_id in rootIds
+    const { data: versionRowsById } = await supabase
+      .from("conversations")
+      .select("id, slug, version, root_conversation_id")
+      .in("id", rootIds)
+    const { data: versionRowsByParent } = await supabase
+      .from("conversations")
+      .select("id, slug, version, root_conversation_id")
+      .in("root_conversation_id", rootIds)
+    const seenIds = new Set<string>()
+    const versionRows: Array<{ id: string; slug: string; version: number; root_conversation_id: string | null }> = []
+    for (const v of versionRowsById ?? []) {
+      if (!seenIds.has(v.id)) {
+        seenIds.add(v.id)
+        versionRows.push(v as any)
+      }
+    }
+    for (const v of versionRowsByParent ?? []) {
+      if (!seenIds.has(v.id)) {
+        seenIds.add(v.id)
+        versionRows.push(v as any)
+      }
+    }
+
+    const versionsByRoot = new Map<string, { slug: string; version: number }[]>()
+    for (const v of versionRows) {
+      const rid = (v as any).root_conversation_id ?? v.id
+      if (!rootIds.includes(rid)) continue
+      if (!versionsByRoot.has(rid)) versionsByRoot.set(rid, [])
+      versionsByRoot.get(rid)!.push({ slug: v.slug, version: (v as any).version ?? 1 })
+    }
+    versionsByRoot.forEach((arr) => arr.sort((a, b) => a.version - b.version))
+
+    // Fetch personas for root rows (for display)
     const { data: personasData } = await supabase
       .from("conversation_personas")
       .select(`
         conversation_id,
-        persona (
-          name
-        )
+        persona ( name )
       `)
-      .in("conversation_id", conversationIds)
+      .in("conversation_id", rootIds)
 
     const personasByConversation = new Map<string, string[]>()
     personasData?.forEach((cp: any) => {
@@ -86,31 +163,44 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Merge results with similarity scores
-    const similarityMap = new Map(filtered.map((r: any) => [r.id, r.similarity]))
+    const conversationsWithData: Array<{
+      id: string
+      rootId: string
+      title: string
+      description: string
+      slug: string
+      participants: string[]
+      views: number
+      author: string
+      featureImage: string | null
+      similarity: number
+      versions: { slug: string; version: number }[]
+    }> = []
 
-    const conversationsWithData =
-      conversations?.map((conv: any) => {
-        const email = (conv as any).users?.email
-        const username = extractUsernameFromEmail(email)
+    for (const rootId of rootIds) {
+      const { best, similarity } = byRoot.get(rootId)!
+      const meta = rootMeta.get(rootId) ?? {
+        title: best.title,
+        description: best.description,
+        featureImage: best.feature_image,
+        author: extractUsernameFromEmail((best as any).users?.email),
+      }
+      conversationsWithData.push({
+        id: best.id,
+        rootId,
+        title: meta.title,
+        description: meta.description ?? "",
+        slug: best.slug,
+        participants: personasByConversation.get(rootId) || [],
+        views: best.view_count ?? 0,
+        author: meta.author ?? "",
+        featureImage: meta.featureImage ?? best.feature_image,
+        similarity,
+        versions: versionsByRoot.get(rootId) ?? [{ slug: best.slug, version: best.version ?? 1 }],
+      })
+    }
 
-        return {
-          id: conv.id,
-          title: conv.title,
-          description: conv.description,
-          slug: conv.slug,
-          participants: personasByConversation.get(conv.id) || [],
-          views: conv.view_count || 0,
-          author: username,
-          featureImage: conv.feature_image,
-          similarity: similarityMap.get(conv.id),
-        }
-      }) || []
-
-    // Sort by similarity score (highest first)
-    conversationsWithData.sort(
-      (a, b) => Number(b.similarity ?? 0) - Number(a.similarity ?? 0)
-    )
+    conversationsWithData.sort((a, b) => b.similarity - a.similarity)
 
     return NextResponse.json({ conversations: conversationsWithData, query })
   } catch (error) {

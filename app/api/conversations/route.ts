@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
     const userId = searchParams.get("userId")
 
     const postsLimit = Number.parseInt(process.env.POSTS_LIMIT || "20", 10)
+    const fetchLimit = Math.max(postsLimit * 3, 60)
 
     let query = supabase
       .from("conversations")
@@ -24,6 +25,8 @@ export async function GET(request: NextRequest) {
         user_id,
         is_public,
         feature_image,
+        root_conversation_id,
+        version,
         users!conversations_user_id_fkey (
           id,
           display_name,
@@ -31,7 +34,7 @@ export async function GET(request: NextRequest) {
         )
       `)
       .order("created_at", { ascending: false })
-      .limit(postsLimit)
+      .limit(fetchLimit)
 
     // Filter by category if specified
     if (categoryId && categoryId !== "all") {
@@ -99,8 +102,33 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Map conversations with personas and author info
-    const conversationsWithPersonas = conversationsData.map((conv) => {
+    // Group by root: root_id = root_conversation_id ?? id
+    type Row = (typeof conversationsData)[0] & { root_conversation_id?: string | null; version?: number }
+    const byRoot = new Map<string, Row[]>()
+    for (const c of conversationsData as Row[]) {
+      const rootId = c.root_conversation_id ?? c.id
+      if (!byRoot.has(rootId)) byRoot.set(rootId, [])
+      byRoot.get(rootId)!.push(c)
+    }
+
+    // For each root, pick the root row (id === root_id) or row with min version
+    const rootRows: Row[] = []
+    for (const [rootId, group] of byRoot) {
+      const rootRow =
+        group.find((r) => r.id === rootId) ??
+        [...group].sort((a, b) => (a.version ?? 1) - (b.version ?? 1))[0] ??
+        group[0]
+      rootRows.push(rootRow)
+    }
+    rootRows.sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    )
+    const rootsToReturn = rootRows.slice(0, postsLimit)
+
+    // Build root-level items with versionCount
+    const conversationsWithPersonas = rootsToReturn.map((conv) => {
+      const rootId = (conv as Row).root_conversation_id ?? conv.id
+      const group = byRoot.get(rootId)!
       const participants = personasByConversation.get(conv.id) || []
       const userData = (conv as any).users
       const email = userData?.email
@@ -108,6 +136,7 @@ export async function GET(request: NextRequest) {
 
       return {
         id: conv.id,
+        rootId,
         title: conv.title,
         description: conv.description || "",
         slug: conv.slug,
@@ -117,6 +146,7 @@ export async function GET(request: NextRequest) {
         createdAt: conv.created_at,
         categoryId: conv.category_id,
         featureImage: conv.feature_image,
+        versionCount: group.length,
       }
     })
 

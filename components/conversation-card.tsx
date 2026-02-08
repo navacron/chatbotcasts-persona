@@ -13,13 +13,19 @@ interface ConversationCardProps {
     views: number
     author: string
     featureImage?: string | null
+    versionCount?: number
+    versions?: { slug: string; version: number }[]
   }
 }
 
 export default function ConversationCard({ conversation }: ConversationCardProps) {
+  const showParts =
+    (conversation.versionCount && conversation.versionCount > 1) ||
+    (conversation.versions && conversation.versions.length > 1)
+
   return (
-    <Link href={`/posts/${conversation.slug}`} className="block">
-      <div className="bg-white border border-border rounded-lg overflow-hidden hover:shadow-lg transition-shadow h-full">
+    <div className="bg-white border border-border rounded-lg overflow-hidden hover:shadow-lg transition-shadow h-full flex flex-col">
+      <Link href={`/posts/${conversation.slug}`} className="block flex-1">
         {conversation.featureImage && (
           <div className="relative w-full h-48 bg-muted">
             <Image
@@ -72,7 +78,34 @@ export default function ConversationCard({ conversation }: ConversationCardProps
             View Conversation
           </Button>
         </div>
-      </div>
-    </Link>
+      </Link>
+
+      {/* Multi-part series label */}
+      {showParts && (
+        <div className="px-6 pb-4 pt-0 border-t border-border/50 mt-auto">
+          {conversation.versions && conversation.versions.length > 1 ? (
+            <div className="flex flex-wrap items-center gap-x-1 gap-y-1 text-xs text-muted-foreground">
+              <span className="mr-1">Parts:</span>
+              {[...conversation.versions]
+                .sort((a, b) => a.version - b.version)
+                .map((v, i, arr) => (
+                  <span key={v.slug}>
+                    <Link
+                      href={`/posts/${v.slug}`}
+                      className="hover:text-foreground underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Part {v.version}
+                    </Link>
+                    {i < arr.length - 1 && <span className="mx-1">·</span>}
+                  </span>
+                ))}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">{conversation.versionCount} parts</p>
+          )}
+        </div>
+      )}
+    </div>
   )
 }

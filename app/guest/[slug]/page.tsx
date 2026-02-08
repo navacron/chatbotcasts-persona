@@ -52,7 +52,7 @@ async function getPersonaWithConversations(slug: string) {
     return { persona, conversations: [] }
   }
 
-  // Fetch full conversation details
+  // Fetch full conversation details with root/version for grouping
   const { data: conversations, error: convError } = await supabase
     .from("conversations")
     .select(
@@ -64,6 +64,8 @@ async function getPersonaWithConversations(slug: string) {
       view_count,
       feature_image,
       created_at,
+      root_conversation_id,
+      version,
       users!conversations_user_id_fkey(email)
     `,
     )
@@ -77,11 +79,34 @@ async function getPersonaWithConversations(slug: string) {
     return { persona, conversations: [] }
   }
 
-  // Fetch personas for each conversation
+  // Group by root
+  type Row = (typeof conversations)[0] & { root_conversation_id?: string | null; version?: number }
+  const byRoot = new Map<string, Row[]>()
+  for (const c of (conversations ?? []) as Row[]) {
+    const rootId = c.root_conversation_id ?? c.id
+    if (!byRoot.has(rootId)) byRoot.set(rootId, [])
+    byRoot.get(rootId)!.push(c)
+  }
+
+  const rootRows: Row[] = []
+  for (const [rootId, group] of byRoot) {
+    const rootRow =
+      group.find((r) => r.id === rootId) ??
+      [...group].sort((a, b) => (a.version ?? 1) - (b.version ?? 1))[0] ??
+      group[0]
+    rootRows.push(rootRow)
+  }
+  rootRows.sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  )
+
+  const rootIds = rootRows.map((r) => (r as Row).root_conversation_id ?? r.id)
+
+  // Fetch personas for root conversations (for display)
   const { data: allPersonas, error: personasError } = await supabase
     .from("conversation_personas")
     .select("conversation_id, persona(name)")
-    .in("conversation_id", conversationIds)
+    .in("conversation_id", rootIds)
 
   const personasByConversation = new Map<string, string[]>()
   allPersonas?.forEach((cp: any) => {
@@ -93,20 +118,23 @@ async function getPersonaWithConversations(slug: string) {
     }
   })
 
-  // Format conversations
-  const formattedConversations = conversations?.map((conv: any) => {
+  const formattedConversations = rootRows.map((conv: any) => {
+    const rootId = conv.root_conversation_id ?? conv.id
+    const group = byRoot.get(rootId)!
     const email = conv.users?.email
     const username = extractUsernameFromEmail(email)
 
     return {
       id: conv.id,
+      rootId,
       title: conv.title,
-      description: conv.description,
+      description: conv.description ?? "",
       slug: conv.slug,
       views: conv.view_count || 0,
       author: username,
       participants: personasByConversation.get(conv.id) || [],
       featureImage: conv.feature_image,
+      versionCount: group.length,
     }
   })
 

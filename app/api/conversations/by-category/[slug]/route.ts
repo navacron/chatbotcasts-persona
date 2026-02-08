@@ -19,6 +19,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ slu
       return NextResponse.json({ error: "Category not found" }, { status: 404 })
     }
 
+    const fetchLimit = Math.max(postsLimit * 3, 60)
     const { data: conversationsData, error: conversationsError } = await supabase
       .from("conversations")
       .select(
@@ -32,6 +33,8 @@ export async function GET(request: NextRequest, context: { params: Promise<{ slu
         category_id,
         user_id,
         feature_image,
+        root_conversation_id,
+        version,
         users!conversations_user_id_fkey (
           email
         )
@@ -40,7 +43,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ slu
       .eq("category_id", category.id)
       .eq("is_public", true)
       .order("created_at", { ascending: false })
-      .limit(postsLimit)
+      .limit(fetchLimit)
 
     if (conversationsError) {
       console.error("[v0] Error fetching conversations:", conversationsError)
@@ -80,7 +83,30 @@ export async function GET(request: NextRequest, context: { params: Promise<{ slu
       }
     })
 
-    const conversationsWithPersonas = conversationsData.map((conv) => {
+    type Row = (typeof conversationsData)[0] & { root_conversation_id?: string | null; version?: number }
+    const byRoot = new Map<string, Row[]>()
+    for (const c of conversationsData as Row[]) {
+      const rootId = c.root_conversation_id ?? c.id
+      if (!byRoot.has(rootId)) byRoot.set(rootId, [])
+      byRoot.get(rootId)!.push(c)
+    }
+
+    const rootRows: Row[] = []
+    for (const [rootId, group] of byRoot) {
+      const rootRow =
+        group.find((r) => r.id === rootId) ??
+        [...group].sort((a, b) => (a.version ?? 1) - (b.version ?? 1))[0] ??
+        group[0]
+      rootRows.push(rootRow)
+    }
+    rootRows.sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    )
+    const rootsToReturn = rootRows.slice(0, postsLimit)
+
+    const conversationsWithPersonas = rootsToReturn.map((conv) => {
+      const rootId = (conv as Row).root_conversation_id ?? conv.id
+      const group = byRoot.get(rootId)!
       const participants = personasByConversation.get(conv.id) || []
       const userData = (conv as any).users
       const email = userData?.email
@@ -88,6 +114,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ slu
 
       return {
         id: conv.id,
+        rootId,
         title: conv.title,
         description: conv.description || "",
         slug: conv.slug,
@@ -97,6 +124,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ slu
         createdAt: conv.created_at,
         categoryId: conv.category_id,
         featureImage: conv.feature_image,
+        versionCount: group.length,
       }
     })
 
