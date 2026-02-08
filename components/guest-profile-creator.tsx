@@ -63,7 +63,7 @@ export default function GuestProfileCreator({
   return (
     <div className="space-y-6 p-6 bg-gradient-to-br from-card to-card/50 border border-border rounded-xl">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-foreground">Create Custom Guest Persona</h3>
+        <h3 className="text-lg font-semibold text-foreground">Create Custom Agent Persona</h3>
         <button
           onClick={onCancel}
           className="text-muted-foreground hover:text-foreground transition-colors"
@@ -74,7 +74,7 @@ export default function GuestProfileCreator({
 
       {/* Name */}
       <div className="space-y-2">
-        <label className="text-sm font-medium text-foreground">Guest Name *</label>
+        <label className="text-sm font-medium text-foreground">Agent Name *</label>
         <Input
           placeholder="e.g., Sarah Chen"
           value={name}

@@ -160,10 +160,9 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-16 md:py-20">
           <div className="space-y-6">
             <div className="space-y-3">
-              <h1 className="text-4xl md:text-5xl font-bold text-foreground">Create AI Conversations</h1>
+              <h1 className="text-4xl md:text-5xl font-bold text-foreground">AI Personas Debate Any Topic</h1>
               <p className="text-lg text-muted-foreground max-w-2xl">
-                Generate engaging podcasts and conversations between AI personas. Explore ideas from multiple
-                perspectives.
+                Create dynamic podcast conversations where AI personas debate, discuss, and explore topics from every angle.
               </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-4">
@@ -174,7 +173,7 @@ export default function Home() {
               </Link>
               <Link href="/guests" className="flex-1 sm:flex-none">
                 <Button size="lg" variant="outline" className="w-full bg-transparent">
-                  Explore Guests
+                  Browse Agents
                 </Button>
               </Link>
             </div>

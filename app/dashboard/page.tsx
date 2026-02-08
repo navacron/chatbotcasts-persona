@@ -65,7 +65,7 @@ export default function DashboardPage() {
 
   const stats = [
     { label: "Conversations", value: myConversations.length, icon: Share2 },
-    { label: "Custom Guests", value: myGuests.length, icon: Users },
+    { label: "Custom Agents", value: myGuests.length, icon: Users },
     {
       label: "Total Views",
       value: myConversations.reduce((sum, conv) => sum + (conv.views || 0), 0),
@@ -99,7 +99,7 @@ export default function DashboardPage() {
             <h1 className="text-4xl font-bold text-foreground">
               Welcome back, {user?.firstName || user?.username || "User"}!
             </h1>
-            <p className="text-muted-foreground">Manage your conversations and guest personas</p>
+            <p className="text-muted-foreground">Manage your conversations and agent personas</p>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -156,8 +156,8 @@ export default function DashboardPage() {
                     : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
-                My Guests
-              </button>
+My Agents
+            </button>
             </div>
             <Link href="/create">
               <Button className="bg-gradient-to-r from-primary to-accent hover:opacity-90">New Conversation</Button>
@@ -269,10 +269,10 @@ export default function DashboardPage() {
                 ))
               ) : (
                 <div className="text-center py-12 bg-white rounded-lg border border-border">
-                  <p className="text-muted-foreground mb-4">No custom guests yet</p>
+                  <p className="text-muted-foreground mb-4">No custom agents yet</p>
                   <Link href="/guests/create">
                     <Button className="bg-gradient-to-r from-primary to-accent hover:opacity-90">
-                      Create First Guest
+                      Create First Agent
                     </Button>
                   </Link>
                 </div>

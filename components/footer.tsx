@@ -38,7 +38,7 @@ export default function Footer() {
               </li>
               <li>
                 <Link href="/guests" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                  Browse Guests
+                  Browse Agents
                 </Link>
               </li>
               <li>

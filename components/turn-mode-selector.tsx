@@ -26,7 +26,7 @@ export default function TurnModeSelector({
     {
       id: 'alternating',
       title: 'Alternating Mode',
-      description: 'Conversation alternates between host and guest',
+      description: 'Conversation alternates between host and agent',
       icon: '↔️',
     },
     {
@@ -69,7 +69,7 @@ export default function TurnModeSelector({
           </label>
           <p className="text-xs text-muted-foreground mb-2">
             {mode === 'alternating'
-              ? 'How many times should the host and guest exchange messages?'
+              ? 'How many times should the host and agent exchange messages?'
               : 'How many times should each persona speak in sequence?'}
           </p>
           <div className="flex items-center gap-2">

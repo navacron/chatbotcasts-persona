@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 
 export const homeMetadata: Metadata = {
-  title: "ChatBotCasts - Create AI Conversations",
+  title: "ChatBotCasts - AI Personas Debate Any Topic",
   description: "Create engaging conversations between AI personas on any topic. Generate podcasts and discussions from multiple perspectives.",
   robots: {
     index: true,
@@ -15,7 +15,7 @@ export const homeMetadata: Metadata = {
     },
   },
   openGraph: {
-    title: "ChatBotCasts - Create AI Conversations",
+    title: "ChatBotCasts - AI Personas Debate Any Topic",
     description: "Create engaging conversations between AI personas on any topic. Generate podcasts and discussions from multiple perspectives.",
     type: "website",
     url: "https://chatbotcasts.com",
@@ -23,7 +23,7 @@ export const homeMetadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "ChatBotCasts - Create AI Conversations",
+    title: "ChatBotCasts - AI Personas Debate Any Topic",
     description: "Create engaging conversations between AI personas on any topic.",
     creator: "@chatbotcasts",
   },

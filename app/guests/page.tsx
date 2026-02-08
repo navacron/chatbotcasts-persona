@@ -62,14 +62,14 @@ export default function GuestsPage() {
         <div className="space-y-6 mb-12">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h1 className="text-4xl font-bold text-foreground">Manage Guests</h1>
+              <h1 className="text-4xl font-bold text-foreground">Manage Agents</h1>
               <p className="text-muted-foreground">Create and manage custom AI personas</p>
             </div>
             {activeTab === "my" && (
               <Link href="/guests/create">
                 <Button className="bg-gradient-to-r from-primary to-accent hover:opacity-90">
                   <Plus className="h-4 w-4 mr-2" />
-                  New Guest
+                  New Agent
                 </Button>
               </Link>
             )}
@@ -85,7 +85,7 @@ export default function GuestsPage() {
                   : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
-              Community Guests
+              Community Agents
             </button>
             <button
               onClick={() => setActiveTab("my")}
@@ -95,7 +95,7 @@ export default function GuestsPage() {
                   : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
-              My Guests
+              My Agents
             </button>
           </div>
 
@@ -103,7 +103,7 @@ export default function GuestsPage() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <Input
-              placeholder="Search guests..."
+              placeholder="Search agents..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 h-11 bg-white border-border"
@@ -115,7 +115,7 @@ export default function GuestsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {loading ? (
             <div className="col-span-full text-center py-12">
-              <p className="text-muted-foreground">Loading guests...</p>
+              <p className="text-muted-foreground">Loading agents...</p>
             </div>
           ) : displayedPersonas.length > 0 ? (
             displayedPersonas.map((persona) => (
@@ -137,7 +137,7 @@ export default function GuestsPage() {
               <p className="text-muted-foreground">
                 {activeTab === "my" && !isAuthenticated
                   ? "Sign in to view your personas"
-                  : "No guests found matching your search."}
+                  : "No agents found matching your search."}
               </p>
             </div>
           )}

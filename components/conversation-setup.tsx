@@ -72,7 +72,7 @@ export default function ConversationSetup({ onStart }: ConversationSetupProps) {
 
           <Link href="/guests/create">
             <Button variant="outline" className="w-full border-dashed bg-transparent" type="button">
-              + Add Custom Guest Persona
+              + Add Custom Agent Persona
             </Button>
           </Link>
 

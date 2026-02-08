@@ -122,14 +122,14 @@ export async function generateMetadata({ params }: GuestPageProps): Promise<Meta
 
   if (!data) {
     return {
-      title: "Guest Not Found",
+      title: "Agent Not Found",
     }
   }
 
   const { persona } = data
 
   return {
-    title: `${persona.name} - Guest Profile | ChatBotCasts`,
+    title: `${persona.name} - Agent Profile | ChatBotCasts`,
     description: persona.prompt?.substring(0, 160) || `Explore conversations featuring ${persona.name}`,
     robots: {
       index: true,
@@ -143,13 +143,13 @@ export async function generateMetadata({ params }: GuestPageProps): Promise<Meta
       },
     },
     openGraph: {
-      title: `${persona.name} - Guest Profile`,
+      title: `${persona.name} - Agent Profile`,
       description: persona.prompt?.substring(0, 160) || `Explore conversations featuring ${persona.name}`,
       type: "profile",
     },
     twitter: {
       card: "summary_large_card",
-      title: `${persona.name} - Guest Profile`,
+      title: `${persona.name} - Agent Profile`,
       description: persona.prompt?.substring(0, 160) || `Explore conversations featuring ${persona.name}`,
     },
   }
@@ -174,7 +174,7 @@ export default async function GuestPage({ params }: GuestPageProps) {
         <div className="bg-white border border-border rounded-lg p-8 mb-12 space-y-6">
           <div className="space-y-2">
             <h1 className="text-4xl font-bold text-foreground">{persona.name}</h1>
-            <p className="text-muted-foreground">Guest Profile</p>
+            <p className="text-muted-foreground">Agent Profile</p>
           </div>
 
           {/* Prompt */}
@@ -218,7 +218,7 @@ export default async function GuestPage({ params }: GuestPageProps) {
             </div>
           ) : (
             <div className="text-center py-12 bg-white border border-border rounded-lg">
-              <p className="text-muted-foreground">No public conversations found featuring this guest yet.</p>
+              <p className="text-muted-foreground">No public conversations found featuring this agent yet.</p>
             </div>
           )}
         </div>

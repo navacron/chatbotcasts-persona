@@ -289,7 +289,7 @@ export default function PersonaSelector({
           {guestPersonas.length > 0 && (
             <div className="space-y-2">
               <h3 className="text-sm font-semibold text-foreground">
-                Guests {guestPersonas.length < uniquePersonas.length && `(Showing ${guestPersonas.length} of ${uniquePersonas.length})`}
+                Agents {guestPersonas.length < uniquePersonas.length && `(Showing ${guestPersonas.length} of ${uniquePersonas.length})`}
               </h3>
               {renderPersonaGrid(guestPersonas)}
             </div>

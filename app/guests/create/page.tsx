@@ -51,7 +51,7 @@ export default function CreateGuestPage() {
       const data = await response.json()
 
       if (!response.ok) {
-        setError(data.error || 'Failed to create guest')
+        setError(data.error || 'Failed to create agent')
         setIsSubmitting(false)
         return
       }
@@ -59,7 +59,7 @@ export default function CreateGuestPage() {
       setPublished(true)
     } catch (err) {
       console.error('[v0] Error creating guest:', err)
-      setError('Failed to create guest. Please try again.')
+      setError('Failed to create agent. Please try again.')
       setIsSubmitting(false)
     }
   }
@@ -71,13 +71,13 @@ export default function CreateGuestPage() {
         <div className="max-w-2xl mx-auto px-4 md:px-8 py-12">
           <div className="bg-green-50 border border-green-200 rounded-lg p-8 text-center space-y-4">
             <div className="text-6xl mb-4">✓</div>
-            <h2 className="text-2xl font-bold text-green-900">Guest Published!</h2>
+            <h2 className="text-2xl font-bold text-green-900">Agent Published!</h2>
             <p className="text-green-700">
               Your AI persona is now available for others to use in conversations.
             </p>
             <div className="flex gap-4 justify-center pt-4">
               <Button variant="outline" onClick={() => router.push('/guests')}>
-                View My Guests
+                View My Agents
               </Button>
               <Button onClick={() => window.location.reload()}>
                 Create Another
@@ -96,12 +96,12 @@ export default function CreateGuestPage() {
       <div className="max-w-2xl mx-auto px-4 md:px-8 py-12">
         <Link href="/guests" className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6">
           <ArrowLeft className="h-4 w-4" />
-          Back to Guests
+          Back to Agents
         </Link>
 
         <div className="bg-white border border-border rounded-xl p-8 space-y-8">
           <div className="space-y-2">
-            <h1 className="text-3xl font-bold text-foreground">Create AI Guest Persona</h1>
+            <h1 className="text-3xl font-bold text-foreground">Create AI Agent Persona</h1>
             <p className="text-muted-foreground">
               Define a custom AI persona that others can use in their conversations
             </p>
@@ -200,7 +200,7 @@ export default function CreateGuestPage() {
                 disabled={!name.trim() || !prompt.trim() || isSubmitting}
                 className="flex-1 bg-gradient-to-r from-primary to-accent hover:opacity-90 disabled:opacity-50"
               >
-                {isSubmitting ? 'Publishing...' : 'Publish Guest'}
+                {isSubmitting ? 'Publishing...' : 'Publish Agent'}
               </Button>
             </div>
           </div>

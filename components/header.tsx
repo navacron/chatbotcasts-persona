@@ -29,7 +29,7 @@ export default function Header() {
               Create
             </Link>
             <Link href="/guests" className="text-foreground hover:text-primary transition-colors">
-              Guests
+              Agents
             </Link>
             <Link href="/billing" className="text-foreground hover:text-primary transition-colors">
               Pricing
@@ -71,7 +71,7 @@ export default function Header() {
               Create Conversation
             </Link>
             <Link href="/guests" className="block px-4 py-2 text-foreground hover:bg-secondary rounded">
-              Browse Guests
+              Browse Agents
             </Link>
             <Link href="/billing" className="block px-4 py-2 text-foreground hover:bg-secondary rounded">
               Pricing
