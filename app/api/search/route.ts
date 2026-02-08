@@ -16,9 +16,9 @@ export async function GET(request: NextRequest) {
 
     const supabase = await createClient()
 
-    const { data: results, error } = await supabase.rpc("search_conversations_by_similarity", {
+    const { data: results, error } = await supabase.rpc("search_conversations_hybrid", {
+      query_text: query,
       query_embedding: queryEmbedding,
-      match_threshold: 0.5,
       match_count: 10,
     })
 
