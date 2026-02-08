@@ -77,11 +77,18 @@ export default function TestPromptClient() {
         }),
       })
 
-      if (!response.ok) {
-        throw new Error("Failed to get response")
+      let data: { text?: string; citations?: string[]; error?: string; details?: string }
+      try {
+        data = await response.json()
+      } catch {
+        throw new Error(response.ok ? "Invalid response from server" : `Request failed (${response.status})`)
       }
 
-      const data = await response.json()
+      if (!response.ok) {
+        const errorMsg = data?.error || "Failed to get response"
+        const details = data?.details ? ` (${data.details})` : ""
+        throw new Error(`${errorMsg}${details}`)
+      }
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -105,10 +112,12 @@ export default function TestPromptClient() {
       }))
     } catch (error) {
       console.error("[v0] Error sending message:", error)
+      const message =
+        error instanceof Error ? error.message : "Sorry, there was an error processing your request."
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: "Sorry, there was an error processing your request.",
+        content: message,
         createdAt: new Date(),
       }
       setMessages((prev) => [...prev, errorMessage])

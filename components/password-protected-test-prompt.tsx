@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,6 +14,28 @@ export default function PasswordProtectedTestPrompt() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [checkingBypass, setCheckingBypass] = useState(true)
+
+  // When no password is configured (e.g. local dev), allow access without prompting
+  useEffect(() => {
+    let cancelled = false
+    fetch("/api/verify-test-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: "" }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled && data.authenticated) setIsAuthenticated(true)
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setCheckingBypass(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -46,6 +68,14 @@ export default function PasswordProtectedTestPrompt() {
 
   if (isAuthenticated) {
     return <TestPromptClient />
+  }
+
+  if (checkingBypass) {
+    return (
+      <div className="max-w-md mx-auto px-4 py-24 flex justify-center">
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      </div>
+    )
   }
 
   return (

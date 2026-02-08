@@ -16,9 +16,16 @@ export async function POST(req: Request) {
       return Response.json({ error: "Messages must be a non-empty array" }, { status: 400 })
     }
 
-    const perplexity = createPerplexity({
-      apiKey: process.env.PERPLEXITY_API_KEY,
-    })
+    const apiKey = process.env.PERPLEXITY_API_KEY
+    if (!apiKey?.trim()) {
+      console.error("[v0] PERPLEXITY_API_KEY is not set")
+      return Response.json(
+        { error: "Perplexity API key not configured", details: "Set PERPLEXITY_API_KEY in .env.local" },
+        { status: 503 },
+      )
+    }
+
+    const perplexity = createPerplexity({ apiKey })
 
     const coreMessages = messages.map((msg: any) => ({
       role: msg.role,

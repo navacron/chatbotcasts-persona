@@ -7,8 +7,9 @@ export async function POST(request: NextRequest) {
     // Get the password from environment variable
     const correctPassword = process.env.TEST_UI_PASSWORD
 
-    if (!correctPassword) {
-      return NextResponse.json({ authenticated: false, error: "Password not configured" }, { status: 500 })
+    // If no password is configured (e.g. local dev), allow access
+    if (!correctPassword || correctPassword.trim() === "") {
+      return NextResponse.json({ authenticated: true })
     }
 
     // Check if password matches
