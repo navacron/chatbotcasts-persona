@@ -1,3 +1,4 @@
+import { generateEmbedding } from "@/lib/embeddings"
 import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
 import { auth } from "@clerk/nextjs/server"
@@ -201,6 +202,25 @@ export async function POST(request: NextRequest) {
       credits_used: 1,
       description: `Created conversation: ${title}`,
     })
+
+    // Generate embedding for public conversations (non-blocking; backfill can catch failures)
+    if (isPublic) {
+      const searchText = `${title || ""} ${description || ""}`.trim()
+      if (searchText) {
+        try {
+          const embedding = await generateEmbedding(searchText)
+          const { error: embedError } = await supabase
+            .from("conversations")
+            .update({ embedding })
+            .eq("id", conversation.id)
+          if (embedError) {
+            console.error("[API] Failed to update conversation embedding:", embedError)
+          }
+        } catch (err) {
+          console.error("[API] Embedding generation failed (backfill will retry):", err)
+        }
+      }
+    }
 
     // Get updated credit count for response
     const { data: availableCredits } = await supabaseService.rpc("get_available_credits", {

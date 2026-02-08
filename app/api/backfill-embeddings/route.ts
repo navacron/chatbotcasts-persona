@@ -74,10 +74,10 @@ export async function POST(request: Request) {
         // Generate embedding
         const embedding = await generateEmbedding(searchText)
 
-        // Update conversation
+        // Update conversation (array format for pgvector)
         const { error: updateError } = await supabase
           .from("conversations")
-          .update({ embedding: JSON.stringify(embedding) })
+          .update({ embedding })
           .eq("id", conv.id)
 
         if (updateError) {
