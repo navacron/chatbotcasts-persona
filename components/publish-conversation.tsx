@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
+import { removeCitations } from "@/lib/markdown-utils"
 import { Input } from "@/components/ui/input"
 import { CheckCircle2, Loader2, LogIn, Sparkles } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -34,6 +35,8 @@ export default function PublishConversation({ conversationData, chatData }: Publ
   const [loadingCategories, setLoadingCategories] = useState(true)
   const router = useRouter()
   const { user, isLoaded } = useUser()
+  const autoSummaryStartedRef = useRef(false)
+  const descriptionRef = useRef(description)
 
   const isAuthenticated = isLoaded && !!user
   const checkingAuth = !isLoaded
@@ -89,6 +92,24 @@ export default function PublishConversation({ conversationData, chatData }: Publ
     }
   }, [chatData, title, slug])
 
+  descriptionRef.current = description
+
+  // Lazy auto-generate summary in the background so the UI stays responsive (no spinner).
+  // Runs once, shortly after open, if there are messages and description is still empty.
+  useEffect(() => {
+    if (!chatData?.messages?.length || description.trim() !== "" || autoSummaryStartedRef.current) return
+
+    const t = setTimeout(() => {
+      autoSummaryStartedRef.current = true
+      const conversationText = chatData.messages.map((msg: any) => `${msg.name}: ${msg.message}`).join("\n\n")
+      fetchSummaryFromApi(conversationText).then((summary) => {
+        if (descriptionRef.current.trim() === "") setDescription(summary)
+      })
+    }, 2000)
+
+    return () => clearTimeout(t)
+  }, [chatData?.messages])
+
   const handleTitleChange = (value: string) => {
     setTitle(value)
     if (!slug || slug === generateSlug(title)) {
@@ -105,6 +126,24 @@ export default function PublishConversation({ conversationData, chatData }: Publ
       .replace(/^-+|-+$/g, "")
   }
 
+  const SUMMARY_PROMPT =
+    "Please provide a concise summary of the following conversation in less than 500 words. Focus on the main topics discussed, key insights shared, and important conclusions reached. Do not include HTML tags, and do not include citation markers or reference numbers like [1], [2] in your response."
+
+  /** Fetches summary from LLM and returns cleaned text (citations stripped). */
+  const fetchSummaryFromApi = async (conversationText: string): Promise<string> => {
+    const response = await fetch("/api/ai/perplexity", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messages: [{ role: "user", content: `${SUMMARY_PROMPT}\n\nConversation:\n${conversationText}` }],
+      }),
+    })
+    if (!response.ok) throw new Error("Failed to generate summary")
+    const data = await response.json()
+    const raw = data.text || ""
+    return removeCitations(raw)
+  }
+
   const generateSummary = async () => {
     if (!chatData?.messages || chatData.messages.length === 0) {
       setError("No messages to summarize")
@@ -116,29 +155,7 @@ export default function PublishConversation({ conversationData, chatData }: Publ
 
     try {
       const conversationText = chatData.messages.map((msg: any) => `${msg.name}: ${msg.message}`).join("\n\n")
-
-      const response = await fetch("/api/ai/perplexity", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          messages: [
-            {
-              role: "user",
-              content: `Please provide a concise summary of the following conversation in less than 500 words. Focus on the main topics discussed, key insights shared, and important conclusions reached. Do not include HTML tags in your response.\n\nConversation:\n${conversationText}`,
-            },
-          ],
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error("Failed to generate summary")
-      }
-
-      const data = await response.json()
-      const summary = data.text || ""
-
+      const summary = await fetchSummaryFromApi(conversationText)
       setDescription(summary)
     } catch (err) {
       console.error("[v0] Error generating summary:", err)
@@ -181,31 +198,13 @@ export default function PublishConversation({ conversationData, chatData }: Publ
       let finalDescription = description
       if (!description.trim() && chatData?.messages && chatData.messages.length > 0) {
         console.log("[v0] No description provided, generating summary...")
-
-        const conversationText = chatData.messages.map((msg: any) => `${msg.name}: ${msg.message}`).join("\n\n")
-
-        const summaryResponse = await fetch("/api/ai/perplexity", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            messages: [
-              {
-                role: "user",
-                content: `Please provide a concise summary of the following conversation in less than 500 words. Focus on the main topics discussed, key insights shared, and important conclusions reached. Do not include HTML tags in your response.\n\nConversation:\n${conversationText}`,
-              },
-            ],
-          }),
-        })
-
-        if (summaryResponse.ok) {
-          const summaryData = await summaryResponse.json()
-          finalDescription = summaryData.text || ""
+        try {
+          const conversationText = chatData.messages.map((msg: any) => `${msg.name}: ${msg.message}`).join("\n\n")
+          finalDescription = await fetchSummaryFromApi(conversationText)
           setDescription(finalDescription)
           console.log("[v0] Generated summary:", finalDescription)
-        } else {
-          console.error("[v0] Failed to generate summary, proceeding without it")
+        } catch (e) {
+          console.error("[v0] Failed to generate summary, proceeding without it", e)
         }
       }
 
@@ -460,7 +459,7 @@ export default function PublishConversation({ conversationData, chatData }: Publ
             className="w-full min-h-24 p-3 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary"
           />
           <p className="text-xs text-muted-foreground">
-            Leave empty to auto-generate a summary when publishing, or click "Generate Summary" to preview
+            Leave empty and a summary may appear automatically in a few seconds, or click "Generate Summary" to generate now. You can also publish with an empty description to generate on publish.
           </p>
         </div>
 
