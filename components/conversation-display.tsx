@@ -1,10 +1,11 @@
 "use client"
 
+import React from "react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Clock, Eye, User, MessageSquarePlus, ExternalLink } from "lucide-react"
+import { Clock, Eye, User, MessageSquarePlus, ExternalLink, Pencil, ArrowRight } from "lucide-react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import PlayAllControl from "@/components/play-all-control"
@@ -36,10 +37,14 @@ interface Category {
 
 interface ConversationData {
   id: string
+  slug?: string
+  user_id?: string
   title: string
   description?: string
   topic?: string
   feature_image?: string | null
+  parent_conversation_id?: string | null
+  version?: number
   data: {
     title?: string
     content?: string
@@ -53,21 +58,45 @@ interface ConversationData {
   updated_at: string
 }
 
+interface ParentConversation {
+  id: string
+  slug: string
+  title: string
+  version?: number
+}
+
+interface FirstChildConversation {
+  slug: string
+  title: string
+  version?: number
+}
+
 interface ConversationDisplayProps {
   conversation: ConversationData
   personas: Persona[]
   user: { display_name?: string; email?: string } | null
   category?: Category | null
+  parentConversation?: ParentConversation | null
+  firstChildConversation?: FirstChildConversation | null
 }
 
-export default function ConversationDisplay({ conversation, personas, user, category }: ConversationDisplayProps) {
+export default function ConversationDisplay({
+  conversation,
+  personas,
+  user,
+  category,
+  parentConversation = null,
+  firstChildConversation = null,
+}: ConversationDisplayProps) {
   const { user: clerkUser, isLoaded } = useUser()
   const isLoggedIn = isLoaded && !!clerkUser
+  const isOwner = isLoggedIn && !!conversation.user_id && clerkUser?.id === conversation.user_id
   const router = useRouter()
 
   const messages = conversation.data?.messages || []
   const personaMap = new Map(personas.map((p) => [p.id, p]))
   const hasAudio = messages.some((msg) => msg.audio)
+  const slug = conversation.slug ?? ""
 
   const getPersonaColor = (personaId: string) => {
     const persona = personaMap.get(personaId)
@@ -104,11 +133,15 @@ export default function ConversationDisplay({ conversation, personas, user, cate
     router.push(`/create?conversationId=${conversation.id}`)
   }
 
+  const handleEditPost = () => {
+    if (slug) router.push(`/posts/${slug}/edit`)
+  }
+
   // Render message content and convert inline [1], [2], ... into clickable citation links
   const renderMessageWithCitations = (message: Message) => {
     const text = message.content || ""
     const citations = message.citations || []
-    const parts: (string | JSX.Element)[] = []
+    const parts: (string | React.ReactElement)[] = []
 
     const regex = /\[(\d+)\]/g
     let lastIndex = 0
@@ -171,8 +204,24 @@ export default function ConversationDisplay({ conversation, personas, user, cate
 
   const youtubeVideoId = getFirstYouTubeVideoId()
 
+  const version = conversation.version ?? 1
+  const showLastUpdated =
+    conversation.updated_at && conversation.created_at && conversation.updated_at !== conversation.created_at
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
+      {/* Part 2 / Continued from banner */}
+      {parentConversation && (
+        <div className="mb-4 rounded-lg border bg-muted/40 px-4 py-3 text-sm">
+          <span className="font-medium">Part {version}</span>
+          <span className="text-muted-foreground mx-2">·</span>
+          <span className="text-muted-foreground">Continued from </span>
+          <Link href={`/posts/${parentConversation.slug}`} className="text-primary hover:underline font-medium">
+            Part {parentConversation.version ?? 1}: {parentConversation.title}
+          </Link>
+        </div>
+      )}
+
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-4xl font-bold mb-4 text-balance">{conversation.title}</h1>
@@ -242,6 +291,11 @@ export default function ConversationDisplay({ conversation, personas, user, cate
             <Clock className="h-4 w-4" />
             <span>{formatDate(conversation.created_at)}</span>
           </div>
+          {showLastUpdated && (
+            <div className="flex items-center gap-2">
+              <span>Last updated {formatDate(conversation.updated_at)}</span>
+            </div>
+          )}
           <div className="flex items-center gap-2">
             <Eye className="h-4 w-4" />
             <span>{conversation.view_count || 0} views</span>
@@ -260,16 +314,37 @@ export default function ConversationDisplay({ conversation, personas, user, cate
           </div>
         </div>
 
-        {/* Extend Conversation button for logged-in users */}
-        {isLoggedIn && (
+        {/* Edit (owner only) and Continue (any logged-in user for community participation) */}
+        {(isOwner || isLoggedIn) && (
+          <div className="flex flex-wrap gap-3 mb-8">
+            {isOwner && (
+              <Button variant="outline" onClick={handleEditPost}>
+                <Pencil className="h-4 w-4 mr-2" />
+                Edit this post
+              </Button>
+            )}
+            {isLoggedIn && (
+              <Button
+                onClick={handleExtendConversation}
+                className="bg-gradient-to-r from-primary to-accent hover:opacity-90"
+              >
+                <MessageSquarePlus className="h-4 w-4 mr-2" />
+                Continue this conversation
+              </Button>
+            )}
+          </div>
+        )}
+
+        {/* Continue to Part 2 link when this post has a continuation */}
+        {firstChildConversation && (
           <div className="mb-8">
-            <Button
-              onClick={handleExtendConversation}
-              className="bg-gradient-to-r from-primary to-accent hover:opacity-90"
+            <Link
+              href={`/posts/${firstChildConversation.slug}`}
+              className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
             >
-              <MessageSquarePlus className="h-4 w-4 mr-2" />
-              Extend Conversation
-            </Button>
+              <ArrowRight className="h-4 w-4" />
+              Continue to Part {firstChildConversation.version ?? 2}: {firstChildConversation.title}
+            </Link>
           </div>
         )}
       </div>

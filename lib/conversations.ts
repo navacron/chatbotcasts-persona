@@ -73,7 +73,7 @@ export async function getConversationById(id: string) {
   }
 }
 
-export async function getConversationBySlug(slug: string) {
+export async function getConversationBySlug(slug: string, options?: { skipViewIncrement?: boolean }) {
   try {
     const supabase = await createClient()
 
@@ -148,11 +148,53 @@ export async function getConversationBySlug(slug: string) {
       console.error("[v0] Error fetching human user details:", usersError)
     }
 
-    // Increment view count
-    await supabase
+    if (!options?.skipViewIncrement) {
+      await supabase
+        .from("conversations")
+        .update({ view_count: (conversation.view_count || 0) + 1 })
+        .eq("id", conversation.id)
+    }
+
+    let parentConversation: { id: string; slug: string; title: string; version?: number } | null = null
+    const parentId = (conversation as { parent_conversation_id?: string }).parent_conversation_id
+    if (parentId) {
+      const { data: parent } = await supabase
+        .from("conversations")
+        .select("id, slug, title, version")
+        .eq("id", parentId)
+        .maybeSingle()
+      if (parent) {
+        parentConversation = {
+          id: parent.id,
+          slug: parent.slug,
+          title: parent.title,
+          version: parent.version ?? 1,
+        }
+      }
+    }
+
+    let firstChildConversation: { slug: string; title: string; version?: number } | null = null
+    const { data: children } = await supabase
       .from("conversations")
-      .update({ view_count: (conversation.view_count || 0) + 1 })
-      .eq("id", conversation.id)
+      .select("slug, title, version")
+      .eq("parent_conversation_id", conversation.id)
+      .order("version", { ascending: true })
+      .limit(1)
+    const child = Array.isArray(children) ? children[0] : children
+    if (child) {
+      firstChildConversation = {
+        slug: child.slug,
+        title: child.title,
+        version: child.version ?? 2,
+      }
+    }
+
+    const HUMAN_PERSONA_ID = "human"
+    const linkedPersonaIds: string[] = []
+    for (const cp of conversationPersonas || []) {
+      if (cp.persona_id) linkedPersonaIds.push(cp.persona_id)
+      if (cp.user_id) linkedPersonaIds.push(HUMAN_PERSONA_ID)
+    }
 
     return {
       conversation,
@@ -160,6 +202,9 @@ export async function getConversationBySlug(slug: string) {
       humanUsers: humanUsers || [],
       user: (conversation as any).users,
       category: (conversation as any).category,
+      parentConversation,
+      firstChildConversation,
+      linkedPersonaIds,
     }
   } catch (error) {
     console.error("[v0] Unexpected error in getConversationBySlug:", error)

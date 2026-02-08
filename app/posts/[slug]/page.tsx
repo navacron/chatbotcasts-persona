@@ -103,6 +103,8 @@ export default async function PostPage({ params }: PageProps) {
           personas={data.personas}
           user={data.user}
           category={data.category}
+          parentConversation={data.parentConversation ?? null}
+          firstChildConversation={data.firstChildConversation ?? null}
         />
       </div>
       <Footer />

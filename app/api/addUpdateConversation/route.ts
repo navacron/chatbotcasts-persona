@@ -4,6 +4,54 @@ import { createServiceClient } from "@/lib/supabase/service"
 import { auth } from "@clerk/nextjs/server"
 import { type NextRequest, NextResponse } from "next/server"
 
+async function resolveParentAndSlug(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  parentConversationId: string | undefined,
+  slugFromBody: string | undefined,
+  userId: string
+): Promise<{ slug: string; parent_conversation_id: string | null; root_conversation_id: string | null; version: number }> {
+  let slug = slugFromBody ?? ""
+  let parent_conversation_id: string | null = null
+  let root_conversation_id: string | null = null
+  let version = 1
+  if (!parentConversationId) {
+    return { slug, parent_conversation_id, root_conversation_id, version }
+  }
+  const { data: parent, error: parentError } = await supabase
+    .from("conversations")
+    .select("id, slug, user_id, is_public, root_conversation_id, version")
+    .eq("id", parentConversationId)
+    .maybeSingle()
+  if (parentError || !parent) {
+    throw new Error("Parent conversation not found or invalid.")
+  }
+  const isOwner = (parent as { user_id?: string }).user_id === userId
+  const isPublicParent = (parent as { is_public?: boolean }).is_public === true
+  if (!isOwner && !isPublicParent) {
+    throw new Error("You do not have access to continue this conversation.")
+  }
+  parent_conversation_id = parent.id
+  root_conversation_id = (parent as { root_conversation_id?: string }).root_conversation_id ?? parent.id
+  const parentVersion = (parent as { version?: number }).version ?? 1
+  version = parentVersion + 1
+  if (!slug || !/^[a-z0-9-]+$/.test(slug)) {
+    const baseSlug = (parent as { slug: string }).slug
+    let candidate = `${baseSlug}-2`
+    const { data: existing } = await supabase.from("conversations").select("id").eq("slug", candidate).maybeSingle()
+    if (existing) {
+      let n = 3
+      while (true) {
+        candidate = `${baseSlug}-${n}`
+        const { data: ex } = await supabase.from("conversations").select("id").eq("slug", candidate).maybeSingle()
+        if (!ex) break
+        n++
+      }
+    }
+    slug = candidate
+  }
+  return { slug, parent_conversation_id, root_conversation_id, version }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { userId } = await auth()
@@ -13,19 +61,12 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { title, description, topic, data, isPublic, slug, personaIds, categoryId } = body
+    const { title, description, topic, data, isPublic, slug: slugFromBody, personaIds, categoryId, parentConversationId } = body
 
     // Validate required fields first (before checking credits)
     if (!title || !topic || !data) {
       return NextResponse.json(
         { error: "Missing required fields: title, topic, and data are required" },
-        { status: 400 },
-      )
-    }
-
-    if (!slug || !/^[a-z0-9-]+$/.test(slug)) {
-      return NextResponse.json(
-        { error: "Invalid slug format. Use lowercase letters, numbers, and hyphens only." },
         { status: 400 },
       )
     }
@@ -109,6 +150,29 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createClient()
 
+    let slug: string
+    let parent_conversation_id: string | null
+    let root_conversation_id: string | null
+    let version: number
+    try {
+      const resolved = await resolveParentAndSlug(supabase, parentConversationId, slugFromBody, userId)
+      slug = resolved.slug
+      parent_conversation_id = resolved.parent_conversation_id
+      root_conversation_id = resolved.root_conversation_id
+      version = resolved.version
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Invalid parent conversation"
+      const status = msg.includes("access") ? 403 : 400
+      return NextResponse.json({ error: msg }, { status })
+    }
+
+    if (!slug || !/^[a-z0-9-]+$/.test(slug)) {
+      return NextResponse.json(
+        { error: "Invalid slug format. Use lowercase letters, numbers, and hyphens only." },
+        { status: 400 },
+      )
+    }
+
     const { data: existingConversation, error: slugCheckError } = await supabase
       .from("conversations")
       .select("id")
@@ -127,14 +191,19 @@ export async function POST(request: NextRequest) {
     const { data: conversation, error: insertError } = await supabase
       .from("conversations")
       .insert({
-        user_id: userId, // Use Clerk userId
+        user_id: userId,
         title,
         description,
         topic,
-        data, // Stored as JSONB with messages, personas, etc.
+        data,
         is_public: isPublic,
         slug,
-        category_id: categoryId, // Add category_id
+        category_id: categoryId,
+        ...(parent_conversation_id && {
+          parent_conversation_id,
+          root_conversation_id: root_conversation_id ?? undefined,
+          version,
+        }),
       })
       .select()
       .single()
@@ -155,20 +224,18 @@ export async function POST(request: NextRequest) {
     
     const personaRelations: Array<{
       conversation_id: string
-      persona_id?: string
-      user_id?: string
+      persona_id?: string | null
+      user_id?: string | null
     }> = []
 
     for (const personaId of personaIds) {
       if (personaId === HUMAN_PERSONA_ID) {
-        // Human user: use user_id instead of persona_id
         personaRelations.push({
           conversation_id: conversation.id,
           user_id: userId,
           persona_id: null,
         })
       } else {
-        // AI persona: use persona_id
         personaRelations.push({
           conversation_id: conversation.id,
           persona_id: personaId,
@@ -209,15 +276,9 @@ export async function POST(request: NextRequest) {
       if (searchText) {
         try {
           const embedding = await generateEmbedding(searchText)
-          const { error: embedError } = await supabase
-            .from("conversations")
-            .update({ embedding })
-            .eq("id", conversation.id)
-          if (embedError) {
-            console.error("[API] Failed to update conversation embedding:", embedError)
-          }
-        } catch (err) {
-          console.error("[API] Embedding generation failed (backfill will retry):", err)
+          await supabase.from("conversations").update({ embedding }).eq("id", conversation.id)
+        } catch (_err) {
+          // ignore embedding failure; backfill can retry
         }
       }
     }

@@ -15,6 +15,8 @@ export default function CreatePageClient() {
   const [state, setState] = useState<"setup" | "chatting" | "publish">("setup")
   const [conversationData, setConversationData] = useState<any>(null)
   const [chatData, setChatData] = useState<any>(null)
+  const [parentConversationId, setParentConversationId] = useState<string | null>(null)
+  const [parentSlug, setParentSlug] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [creditsInfo, setCreditsInfo] = useState<{
     availableCredits: number
@@ -101,6 +103,8 @@ export default function CreatePageClient() {
 
           console.log("[v0] Converted conversation data:", conversationData)
           setConversationData(conversationData)
+          setParentConversationId(conversationId)
+          setParentSlug(data.conversation?.slug ?? null)
           setState("chatting")
         })
         .catch((error) => {
@@ -349,7 +353,12 @@ export default function CreatePageClient() {
             <ArrowLeft className="h-4 w-4" />
             Back to Conversation
           </button>
-          <PublishConversation conversationData={conversationData} chatData={chatData} />
+          <PublishConversation
+            conversationData={conversationData}
+            chatData={chatData}
+            parentConversationId={parentConversationId}
+            parentSlug={parentSlug}
+          />
         </div>
       ) : null}
     </>

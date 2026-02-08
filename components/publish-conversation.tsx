@@ -11,6 +11,16 @@ import { useUser, SignInButton, SignUpButton } from "@clerk/nextjs"
 interface PublishConversationProps {
   conversationData: any
   chatData: any
+  parentConversationId?: string | null
+  parentSlug?: string | null
+  /** Edit existing post: PATCH same slug, save to conversation_revisions */
+  editMode?: boolean
+  conversationId?: string
+  existingSlug?: string
+  existingDescription?: string
+  existingCategoryId?: string
+  existingIsPublic?: boolean
+  categories?: Category[]
 }
 
 interface Category {
@@ -20,19 +30,33 @@ interface Category {
   description: string | null
 }
 
-export default function PublishConversation({ conversationData, chatData }: PublishConversationProps) {
+export default function PublishConversation({
+  conversationData,
+  chatData,
+  parentConversationId = null,
+  parentSlug = null,
+  editMode = false,
+  conversationId,
+  existingSlug,
+  existingDescription = "",
+  existingCategoryId = "",
+  existingIsPublic = true,
+  categories: categoriesProp,
+}: PublishConversationProps) {
+  const suggestedSlug = editMode ? (existingSlug ?? "") : (parentSlug ? `${parentSlug}-2` : "")
   const [title, setTitle] = useState(chatData?.topic || conversationData?.topic || "")
-  const [description, setDescription] = useState("")
-  const [slug, setSlug] = useState("")
-  const [isPublic, setIsPublic] = useState(true)
+  const [description, setDescription] = useState(editMode ? existingDescription : "")
+  const [slug, setSlug] = useState(suggestedSlug)
+  const [isPublic, setIsPublic] = useState(editMode ? (existingIsPublic ?? true) : true)
   const [published, setPublished] = useState(false)
+  const [publishedSlug, setPublishedSlug] = useState<string>("")
   const [isLoading, setIsLoading] = useState(false)
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [personaNames, setPersonaNames] = useState<string[]>([])
   const [categories, setCategories] = useState<Category[]>([])
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string>("")
-  const [loadingCategories, setLoadingCategories] = useState(true)
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>(editMode ? existingCategoryId : "")
+  const [loadingCategories, setLoadingCategories] = useState(!editMode || !categoriesProp)
   const router = useRouter()
   const { user, isLoaded } = useUser()
   const autoSummaryStartedRef = useRef(false)
@@ -42,15 +66,21 @@ export default function PublishConversation({ conversationData, chatData }: Publ
   const checkingAuth = !isLoaded
 
   useEffect(() => {
+    if (editMode && categoriesProp && categoriesProp.length > 0) {
+      setCategories(categoriesProp)
+      if (existingCategoryId) setSelectedCategoryId(existingCategoryId)
+      setLoadingCategories(false)
+      return
+    }
     const fetchCategories = async () => {
       try {
         const response = await fetch("/api/categories")
         const data = await response.json()
-        setCategories(data.categories || [])
-
-        const otherCategory = data.categories?.find((c: Category) => c.slug === "other")
-        if (otherCategory) {
-          setSelectedCategoryId(otherCategory.id)
+        const list = data.categories || []
+        setCategories(list)
+        if (!editMode) {
+          const otherCategory = list.find((c: Category) => c.slug === "other")
+          if (otherCategory) setSelectedCategoryId(otherCategory.id)
         }
       } catch (error) {
         console.error("[v0] Error fetching categories:", error)
@@ -58,9 +88,8 @@ export default function PublishConversation({ conversationData, chatData }: Publ
         setLoadingCategories(false)
       }
     }
-
     fetchCategories()
-  }, [])
+  }, [editMode, categoriesProp, existingCategoryId])
 
   useEffect(() => {
     const fetchPersonaNames = async () => {
@@ -88,9 +117,9 @@ export default function PublishConversation({ conversationData, chatData }: Publ
     fetchPersonaNames()
 
     if (title && !slug) {
-      setSlug(generateSlug(title))
+      setSlug(parentSlug ? `${parentSlug}-2` : generateSlug(title))
     }
-  }, [chatData, title, slug])
+  }, [chatData, title, slug, parentSlug])
 
   descriptionRef.current = description
 
@@ -176,14 +205,15 @@ export default function PublishConversation({ conversationData, chatData }: Publ
       return
     }
 
-    if (!slug.trim()) {
-      setError("Please enter a slug")
-      return
-    }
-
-    if (!/^[a-z0-9-]+$/.test(slug)) {
-      setError("Slug can only contain lowercase letters, numbers, and hyphens")
-      return
+    if (!editMode) {
+      if (!slug.trim()) {
+        setError("Please enter a slug")
+        return
+      }
+      if (!/^[a-z0-9-]+$/.test(slug)) {
+        setError("Slug can only contain lowercase letters, numbers, and hyphens")
+        return
+      }
     }
 
     if (!selectedCategoryId) {
@@ -197,12 +227,10 @@ export default function PublishConversation({ conversationData, chatData }: Publ
     try {
       let finalDescription = description
       if (!description.trim() && chatData?.messages && chatData.messages.length > 0) {
-        console.log("[v0] No description provided, generating summary...")
         try {
           const conversationText = chatData.messages.map((msg: any) => `${msg.name}: ${msg.message}`).join("\n\n")
           finalDescription = await fetchSummaryFromApi(conversationText)
           setDescription(finalDescription)
-          console.log("[v0] Generated summary:", finalDescription)
         } catch (e) {
           console.error("[v0] Failed to generate summary, proceeding without it", e)
         }
@@ -220,27 +248,49 @@ export default function PublishConversation({ conversationData, chatData }: Publ
       const dataToSave = {
         title: title,
         content: finalDescription || "",
-        slug: slug,
+        slug: editMode ? existingSlug : slug,
         allPersonaIds: chatData?.personas || [],
         currentPersonaId: chatData?.personas?.[0] || null,
         messages: formattedMessages,
       }
 
+      if (editMode && conversationId) {
+        const response = await fetch(`/api/conversations/by-id/${conversationId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title,
+            description: finalDescription,
+            topic: chatData?.topic || conversationData?.topic || "General Discussion",
+            data: dataToSave,
+            isPublic,
+            categoryId: selectedCategoryId,
+            personaIds: chatData?.personas || [],
+          }),
+        })
+        const result = await response.json()
+        if (!response.ok) throw new Error(result.error || "Failed to save")
+        setPublished(true)
+        if (existingSlug) router.push(`/posts/${existingSlug}`)
+        return
+      }
+
+      const body: Record<string, unknown> = {
+        title,
+        description: finalDescription,
+        slug,
+        topic: chatData?.topic || conversationData?.topic || "General Discussion",
+        data: dataToSave,
+        isPublic,
+        personaIds: chatData?.personas || [],
+        categoryId: selectedCategoryId,
+      }
+      if (parentConversationId) body.parentConversationId = parentConversationId
+
       const response = await fetch("/api/addUpdateConversation", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          title,
-          description: finalDescription,
-          slug,
-          topic: chatData?.topic || conversationData?.topic || "General Discussion",
-          data: dataToSave,
-          isPublic,
-          personaIds: chatData?.personas || [],
-          categoryId: selectedCategoryId,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
       })
 
       const result = await response.json()
@@ -249,7 +299,12 @@ export default function PublishConversation({ conversationData, chatData }: Publ
         throw new Error(result.error || "Failed to publish conversation")
       }
 
+      const finalSlug = result.conversation?.slug ?? slug
+      setPublishedSlug(finalSlug)
       setPublished(true)
+      if (parentConversationId && finalSlug) {
+        router.push(`/posts/${finalSlug}`)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred")
     } finally {
@@ -313,22 +368,31 @@ export default function PublishConversation({ conversationData, chatData }: Publ
   }
 
   if (published) {
+    const viewSlug = editMode ? existingSlug : (publishedSlug || slug)
     return (
       <div className="bg-green-50 border border-green-200 rounded-lg p-8 text-center space-y-4">
         <CheckCircle2 className="h-16 w-16 text-green-600 mx-auto" />
-        <h2 className="text-2xl font-bold text-green-900">Conversation Published!</h2>
+        <h2 className="text-2xl font-bold text-green-900">
+          {editMode ? "Changes saved" : "Conversation Published!"}
+        </h2>
         <p className="text-green-700">
-          Your conversation has been shared with the community. You can view it on the home page.
+          {editMode
+            ? "Your post has been updated. The previous version was saved to revision history."
+            : "Your conversation has been shared with the community. You can view it on the home page."}
         </p>
         <div className="bg-white border border-green-300 rounded-lg p-4">
           <p className="text-sm text-muted-foreground mb-2">Your conversation URL:</p>
-          <code className="text-sm font-mono text-foreground bg-muted px-3 py-1 rounded">/posts/{slug}</code>
+          <code className="text-sm font-mono text-foreground bg-muted px-3 py-1 rounded">
+            /posts/{viewSlug}
+          </code>
         </div>
         <div className="flex gap-4 justify-center pt-4">
-          <Button variant="outline" onClick={() => (window.location.href = `/posts/${slug}`)}>
+          <Button variant="outline" onClick={() => (window.location.href = `/posts/${viewSlug}`)}>
             View Conversation
           </Button>
-          <Button onClick={() => (window.location.href = "/create")}>Create Another</Button>
+          {!editMode && (
+            <Button onClick={() => (window.location.href = "/create")}>Create Another</Button>
+          )}
         </div>
       </div>
     )
@@ -337,8 +401,14 @@ export default function PublishConversation({ conversationData, chatData }: Publ
   return (
     <div className="bg-white border border-border rounded-lg p-8 space-y-8">
       <div className="space-y-2">
-        <h1 className="text-3xl font-bold text-foreground">Publish Your Conversation</h1>
-        <p className="text-muted-foreground">Share your AI conversation with the community and earn credits</p>
+        <h1 className="text-3xl font-bold text-foreground">
+          {editMode ? "Save changes to your post" : "Publish Your Conversation"}
+        </h1>
+        <p className="text-muted-foreground">
+          {editMode
+            ? "Update title, description, and settings. Same URL is preserved; previous version is saved."
+            : "Share your AI conversation with the community and earn credits"}
+        </p>
       </div>
 
       <div className="space-y-6">
@@ -358,21 +428,31 @@ export default function PublishConversation({ conversationData, chatData }: Publ
           />
         </div>
 
-        <div className="space-y-2">
-          <label className="text-sm font-semibold text-foreground">URL Slug</label>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">/posts/</span>
-            <Input
-              placeholder="ai-ethics-three-perspectives"
-              value={slug}
-              onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))}
-              className="h-11 flex-1"
-            />
+        {!editMode && (
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-foreground">URL Slug</label>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">/posts/</span>
+              <Input
+                placeholder="ai-ethics-three-perspectives"
+                value={slug}
+                onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))}
+                className="h-11 flex-1"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Only lowercase letters, numbers, and hyphens. This will be your conversation's URL.
+            </p>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Only lowercase letters, numbers, and hyphens. This will be your conversation's URL.
-          </p>
-        </div>
+        )}
+        {editMode && existingSlug && (
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-foreground">URL (unchanged)</label>
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <code className="text-sm font-mono bg-muted px-2 py-1 rounded">/posts/{existingSlug}</code>
+            </div>
+          </div>
+        )}
 
         <div className="space-y-2">
           <label className="text-sm font-semibold text-foreground">Category</label>
@@ -477,17 +557,21 @@ export default function PublishConversation({ conversationData, chatData }: Publ
           </div>
         </div>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-sm text-blue-900">
-            <strong>Earn Credits:</strong> When your conversation is published, you earn credits for each view and
-            interaction. Use these to create more conversations!
-          </p>
-        </div>
+        {!editMode && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p className="text-sm text-blue-900">
+              <strong>Earn Credits:</strong> When your conversation is published, you earn credits for each view and
+              interaction. Use these to create more conversations!
+            </p>
+          </div>
+        )}
 
         <div className="flex gap-4 pt-4">
-          <Button variant="outline" disabled={isLoading || isGeneratingSummary}>
-            Save as Draft
-          </Button>
+          {!editMode && (
+            <Button variant="outline" disabled={isLoading || isGeneratingSummary}>
+              Save as Draft
+            </Button>
+          )}
           <Button
             onClick={handlePublish}
             disabled={isLoading || isGeneratingSummary}
@@ -496,8 +580,10 @@ export default function PublishConversation({ conversationData, chatData }: Publ
             {isLoading ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Publishing...
+                {editMode ? "Saving..." : "Publishing..."}
               </>
+            ) : editMode ? (
+              "Save changes"
             ) : (
               "Publish Conversation"
             )}
