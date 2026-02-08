@@ -31,7 +31,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ conversations: [], query })
     }
 
-    const conversationIds = results.map((r: any) => r.id)
+    const threshold =
+      parseFloat(process.env.SEARCH_RELEVANCE_THRESHOLD ?? "0") || 0
+    const filtered =
+      threshold > 0
+        ? results.filter((r: any) => (r.similarity ?? 0) >= threshold)
+        : results
+
+    if (filtered.length === 0) {
+      return NextResponse.json({ conversations: [], query })
+    }
+
+    const conversationIds = filtered.map((r: any) => r.id)
 
     // Fetch full conversation data with personas and author info
     const { data: conversations, error: convError } = await supabase
@@ -76,7 +87,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Merge results with similarity scores
-    const similarityMap = new Map(results.map((r: any) => [r.id, r.similarity]))
+    const similarityMap = new Map(filtered.map((r: any) => [r.id, r.similarity]))
 
     const conversationsWithData =
       conversations?.map((conv: any) => {
@@ -97,7 +108,9 @@ export async function GET(request: NextRequest) {
       }) || []
 
     // Sort by similarity score (highest first)
-    conversationsWithData.sort((a, b) => (b.similarity || 0) - (a.similarity || 0))
+    conversationsWithData.sort(
+      (a, b) => Number(b.similarity ?? 0) - Number(a.similarity ?? 0)
+    )
 
     return NextResponse.json({ conversations: conversationsWithData, query })
   } catch (error) {
