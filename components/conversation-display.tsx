@@ -12,6 +12,7 @@ import PlayAllControl from "@/components/play-all-control"
 import Link from "next/link"
 import { useUser } from "@clerk/nextjs"
 import { extractUsernameFromEmail } from "@/lib/user-utils"
+import SectionNavigation from "@/components/section-navigation"
 
 interface Message {
   id: number
@@ -222,8 +223,11 @@ export default function ConversationDisplay({
         </div>
       )}
 
-      {/* Header */}
-      <div className="mb-8">
+      {/* Section Navigation */}
+      <SectionNavigation hasAudio={hasAudio} />
+
+      {/* Summary Section */}
+      <section id="summary" className="scroll-mt-24 mb-8">
         <h1 className="text-4xl font-bold mb-4 text-balance">{conversation.title}</h1>
 
         {category && (
@@ -274,12 +278,19 @@ export default function ConversationDisplay({
             </div>
           </div>
         )}
+      </section>
 
-        {hasAudio && (
-          <div className="mb-6">
-            <PlayAllControl messages={messages} />
-          </div>
-        )}
+      {/* Audio Section */}
+      {hasAudio && (
+        <section id="audio" className="scroll-mt-24 mb-8">
+          <h2 className="text-2xl font-semibold mb-4">Listen to Conversation</h2>
+          <PlayAllControl messages={messages} />
+        </section>
+      )}
+
+      {/* Conversation Section */}
+      <section id="conversation" className="scroll-mt-24">
+        <h2 className="text-2xl font-semibold mb-6">Conversation</h2>
 
         {/* Meta information */}
         <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mb-6">
@@ -347,9 +358,8 @@ export default function ConversationDisplay({
             </Link>
           </div>
         )}
-      </div>
 
-      <div className="space-y-1">
+        <div className="space-y-1">
         {messages.map((msg, index) => {
           const persona = personaMap.get(msg.personaId)
           const isFirstMessageFromPersona = index === 0 || messages[index - 1].personaId !== msg.personaId
@@ -400,13 +410,14 @@ export default function ConversationDisplay({
             </div>
           )
         })}
-      </div>
+        </div>
 
-      {messages.length === 0 && (
-        <Card className="p-12 text-center">
-          <p className="text-muted-foreground">No messages in this conversation yet.</p>
-        </Card>
-      )}
+        {messages.length === 0 && (
+          <Card className="p-12 text-center">
+            <p className="text-muted-foreground">No messages in this conversation yet.</p>
+          </Card>
+        )}
+      </section>
     </div>
   )
 }
