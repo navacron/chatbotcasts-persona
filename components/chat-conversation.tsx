@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import ChatMessage from "./chat-message"
 import PersonaSwitcher from "./persona-switcher"
-import ConversationControls from "./conversation-controls"
 import { Send, Share2, Code, User } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useUser } from "@clerk/nextjs"
@@ -409,7 +408,7 @@ export default function ChatConversation({ data, onPublish }: ChatConversationPr
         </Card>
       )}
 
-      <div className="bg-white border border-border rounded-xl overflow-hidden flex flex-col h-96">
+      <div className="bg-white border border-border rounded-xl overflow-hidden flex flex-col h-[calc(100vh-280px)] min-h-[400px] md:h-[calc(100vh-240px)]">
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
           {messages.map((msg) => (
             <ChatMessage
@@ -493,49 +492,6 @@ export default function ChatConversation({ data, onPublish }: ChatConversationPr
               {isGenerating ? "Generating..." : "Generate Response"}
             </Button>
           )}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white border border-border rounded-xl p-6">
-          <h3 className="text-lg font-semibold text-foreground mb-4">Participants</h3>
-          <div className="space-y-2">
-            {personas.map((personaId: string) => {
-              const detail = personaDetails[personaId]
-              if (!detail) return null
-              const isHuman = personaId === HUMAN_PERSONA_ID
-
-              return (
-                <div
-                  key={personaId}
-                  className="flex items-center gap-3 p-3 bg-secondary rounded-lg border border-border/50"
-                >
-                  <div
-                    className={`h-8 w-8 rounded-full bg-gradient-to-br ${detail.color} flex items-center justify-center text-sm flex-shrink-0 overflow-hidden`}
-                  >
-                    {isHuman && user?.imageUrl ? (
-                      <img 
-                        src={user.imageUrl} 
-                        alt={user.fullName || "You"} 
-                        className="h-8 w-8 rounded-full object-cover"
-                      />
-                    ) : (
-                      <span>{detail.avatar}</span>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-sm text-foreground">{detail.name}</div>
-                    {detail.title && <div className="text-sm text-muted-foreground">{detail.title}</div>}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
-        <div className="bg-white border border-border rounded-xl p-6">
-          <h3 className="text-lg font-semibold text-foreground mb-4">Conversation</h3>
-          <ConversationControls messageCount={messages.length} mode={turnMode} onReset={handleReset} />
         </div>
       </div>
     </div>
