@@ -4,6 +4,9 @@ import CategoryPageClient from "@/components/category-page-client"
 import { createClient } from "@/lib/supabase/server"
 import { extractUsernameFromEmail } from "@/lib/user-utils"
 
+// Enable Incremental Static Regeneration - cache for 1 hour
+export const revalidate = 3600
+
 interface PageProps {
   params: Promise<{
     slug: string

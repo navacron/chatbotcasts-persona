@@ -2,6 +2,9 @@ import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { extractUsernameFromEmail } from "@/lib/user-utils"
 
+// Cache this API route for 1 hour
+export const revalidate = 3600
+
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient()

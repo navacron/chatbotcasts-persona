@@ -157,6 +157,17 @@ Both return:
 
 Old conversations may have messages without `personaId`. The code in `getConversationBySlug` handles backward compatibility by assigning default persona IDs based on role names.
 
+### Caching Strategy
+
+The app uses Next.js Incremental Static Regeneration (ISR) to cache pages and prevent timeout issues:
+
+- **Page-level caching**: `export const revalidate = 3600` (1 hour) on dynamic pages
+- **Revalidate endpoint**: `/api/revalidate?token=SECRET` for manual cache clearing
+- **Cached routes**: posts/[slug], category/[slug], guest/[slug], sitemap.ts, robots.ts
+- **Key benefit**: Prevents database timeouts on high-traffic routes (robots.txt, sitemap.xml)
+
+See `CACHING.md` for detailed documentation and usage instructions.
+
 ## Environment Variables
 
 Required in `.env.local`:
@@ -169,6 +180,8 @@ Required in `.env.local`:
 - `STRIPE_SECRET_KEY` - Stripe secret
 - `STRIPE_WEBHOOK_SECRET` - Stripe webhook verification
 - `SEARCH_RELEVANCE_THRESHOLD` (optional) - Minimum search score (default: 0)
+- `REVALIDATE_TOKEN` - Secret token for cache revalidation endpoint (generate random 32+ char string)
+- `NEXT_PUBLIC_SITE_URL` - Public site URL for sitemap, robots.txt (e.g., https://www.chatbotcasts.com)
 
 ## Common Gotchas
 
@@ -185,6 +198,8 @@ Required in `.env.local`:
 6. **Slug Validation**: Slugs must match `/^[a-z0-9-]+$/` (lowercase, numbers, hyphens only).
 
 7. **RLS Policies**: Be aware of Row Level Security when writing queries. Use service client only when necessary for system operations.
+
+8. **Caching**: Pages use ISR with 1-hour revalidation. After content updates, call `/api/revalidate?token=SECRET` to clear cache. Never use `export const dynamic = "force-dynamic"` on public pages as it disables caching and can cause timeouts.
 
 ## Testing & Debugging
 

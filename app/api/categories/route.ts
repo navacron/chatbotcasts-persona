@@ -1,6 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
+// Cache this API route for 1 hour
+export const revalidate = 3600
+
 export async function GET() {
   try {
     const supabase = await createClient()

@@ -5,7 +5,8 @@ import { getConversationBySlug } from "@/lib/conversations"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
 
-export const dynamic = "force-dynamic"
+// Enable Incremental Static Regeneration - cache for 1 hour
+export const revalidate = 3600
 
 interface PageProps {
   params: Promise<{ slug: string }>

@@ -1,6 +1,9 @@
 import type { MetadataRoute } from "next"
 import { createClient } from "@/lib/supabase/server"
 
+// Cache sitemap for 1 hour to prevent timeout issues
+export const revalidate = 3600
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.chatbotcasts.com"
 

@@ -7,6 +7,9 @@ import { ExternalLink } from "lucide-react"
 import Link from "next/link"
 import { extractUsernameFromEmail } from "@/lib/user-utils"
 
+// Enable Incremental Static Regeneration - cache for 1 hour
+export const revalidate = 3600
+
 interface GuestPageProps {
   params: Promise<{
     slug: string
