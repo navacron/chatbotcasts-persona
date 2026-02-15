@@ -187,6 +187,23 @@ export default function ConversationDisplay({
     return parts
   }
 
+  const formatDescription = (description: string) => {
+    // Convert newlines to proper HTML paragraphs and line breaks
+    // Split by double newlines for paragraphs, then replace single newlines with <br>
+    const paragraphs = description
+      .split(/\n\n+/)
+      .map((para) => para.trim())
+      .filter(Boolean)
+      .map((para) => {
+        // Replace single newlines within a paragraph with <br>
+        const withBreaks = para.replace(/\n/g, "<br>")
+        return `<p>${withBreaks}</p>`
+      })
+      .join("")
+
+    return paragraphs || description.replace(/\n/g, "<br>")
+  }
+
   const getFirstYouTubeVideoId = () => {
     for (const message of messages) {
       if (message.citations && message.citations.length > 0) {
@@ -259,8 +276,8 @@ export default function ConversationDisplay({
         {conversation.description && (
           <div className="bg-muted/50 rounded-lg p-6 mb-6">
             <div
-              className="text-lg leading-relaxed text-pretty prose prose-lg max-w-none"
-              dangerouslySetInnerHTML={{ __html: conversation.description }}
+              className="text-lg leading-relaxed text-pretty prose prose-lg max-w-none [&>p]:mb-4 [&>p:last-child]:mb-0"
+              dangerouslySetInnerHTML={{ __html: formatDescription(conversation.description) }}
             />
           </div>
         )}
