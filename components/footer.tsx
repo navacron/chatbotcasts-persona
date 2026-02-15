@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
+import { SignedIn } from '@clerk/nextjs'
 
 export default function Footer() {
   const currentYear = new Date().getFullYear()
@@ -41,11 +42,13 @@ export default function Footer() {
                   Browse Agents
                 </Link>
               </li>
-              <li>
-                <Link href="/dashboard" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                  Dashboard
-                </Link>
-              </li>
+              <SignedIn>
+                <li>
+                  <Link href="/dashboard" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                    Dashboard
+                  </Link>
+                </li>
+              </SignedIn>
             </ul>
           </div>
 
