@@ -1,11 +1,12 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Send, Trash2, Sparkles, Loader2, Code, ExternalLink } from "lucide-react"
+import { Send, Trash2, Sparkles, Loader2, Code, ExternalLink, History, Copy, Check } from "lucide-react"
+import { usePromptHistory } from "@/components/use-prompt-history"
 
 interface Message {
   id: string
@@ -35,6 +36,10 @@ export default function TestPromptClient() {
   const [isLoading, setIsLoading] = useState(false)
   const [debugInfo, setDebugInfo] = useState<DebugInfo | null>(null)
   const [showDebug, setShowDebug] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const { history, addPrompt, clearHistory } = usePromptHistory()
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return
@@ -47,6 +52,7 @@ export default function TestPromptClient() {
     }
 
     setMessages((prev) => [...prev, userMessage])
+    addPrompt(input)
     setInput("")
     setIsLoading(true)
 
@@ -139,6 +145,38 @@ export default function TestPromptClient() {
     }
   }
 
+  const formatTimestamp = (date: Date): string => {
+    const now = new Date()
+    const diff = now.getTime() - new Date(date).getTime()
+
+    // If today, show time only
+    if (diff < 24 * 60 * 60 * 1000) {
+      return new Intl.DateTimeFormat("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      }).format(new Date(date))
+    }
+
+    // Otherwise show date and time
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    }).format(new Date(date))
+  }
+
+  const handleCopyPrompt = (content: string, id: string) => {
+    setInput(content)
+    setCopiedId(id)
+    textareaRef.current?.focus()
+
+    // Clear feedback after 1.5 seconds
+    setTimeout(() => setCopiedId(null), 1500)
+  }
+
   return (
     <div className="max-w-6xl mx-auto px-4 md:px-8 py-12">
       <div className="space-y-6">
@@ -151,6 +189,10 @@ export default function TestPromptClient() {
           <Button variant="outline" size="sm" onClick={() => setShowDebug(!showDebug)}>
             <Code className="h-4 w-4 mr-2" />
             {showDebug ? "Hide" : "Show"} Debug Info
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setShowHistory(!showHistory)}>
+            <History className="h-4 w-4 mr-2" />
+            {showHistory ? "Hide" : "Show"} History ({history.length})
           </Button>
         </div>
 
@@ -228,6 +270,7 @@ export default function TestPromptClient() {
                 {/* Input Area */}
                 <div className="space-y-2">
                   <Textarea
+                    ref={textareaRef}
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={handleKeyPress}
@@ -259,6 +302,58 @@ export default function TestPromptClient() {
                       )}
                     </Button>
                   </div>
+
+                  {/* Prompt History Panel */}
+                  {showHistory && (
+                    <div className="mt-4 pt-4 border-t border-border">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-semibold">📜 Recent Prompts ({history.length})</h3>
+                        {history.length > 0 && (
+                          <Button variant="ghost" size="sm" onClick={clearHistory}>
+                            Clear History
+                          </Button>
+                        )}
+                      </div>
+
+                      {history.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-4">
+                          No prompts yet. Your last 10 prompts will appear here.
+                        </p>
+                      ) : (
+                        <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                          {history.map((item) => (
+                            <div
+                              key={item.id}
+                              className="flex items-start gap-3 p-3 bg-secondary/30 rounded-lg border border-border/50 hover:bg-secondary/50 transition-colors"
+                            >
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <time className="text-xs text-muted-foreground">
+                                    {formatTimestamp(item.timestamp)}
+                                  </time>
+                                </div>
+                                <p className="text-sm text-foreground line-clamp-2" title={item.content}>
+                                  {item.content}
+                                </p>
+                              </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleCopyPrompt(item.content, item.id)}
+                                className="flex-shrink-0"
+                              >
+                                {copiedId === item.id ? (
+                                  <Check className="h-4 w-4" />
+                                ) : (
+                                  <Copy className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

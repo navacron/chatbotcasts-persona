@@ -14,7 +14,7 @@ COMMENT ON COLUMN conversations.root_conversation_id IS 'Root of the series (Par
 COMMENT ON COLUMN conversations.version IS '1 = original; 2+ = Part 2, Part 3, etc.';
 
 -- 2. Create conversation_revisions for edit history and rollback
-CREATE TABLE IF NOT EXISTS conversation_revisions (
+CREATE TABLE IF NOT EXISTS   (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
   content JSONB NOT NULL,
