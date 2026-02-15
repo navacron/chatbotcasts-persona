@@ -74,12 +74,12 @@ export default function Footer() {
             <h3 className="font-semibold text-foreground mb-4">Connect</h3>
             <ul className="space-y-2">
               <li>
-                <a href="mailto:hello@chatbotcasts.com" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                  Email Us
-                </a>
+                <Link href="/contact" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                  Contact Us
+                </Link>
               </li>
               <li>
-                <a href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                <a href="https://twitter.com/ChatBotCasts" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground hover:text-primary transition-colors">
                   Twitter
                 </a>
               </li>
