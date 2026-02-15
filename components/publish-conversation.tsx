@@ -155,8 +155,38 @@ export default function PublishConversation({
       .replace(/^-+|-+$/g, "")
   }
 
-  const SUMMARY_PROMPT =
-    "Please provide a concise summary of the following conversation in less than 500 words. Focus on the main topics discussed, key insights shared, and important conclusions reached. Do not include HTML tags, and do not include citation markers or reference numbers like [1], [2] in your response."
+  /*
+  const SUMMARY_PROMPT = `Write a concise, narrative summary of the following conversation in 250–350 words.
+
+Focus on:
+- What the speakers explored together, not just the concepts
+- How questions, explanations, and examples shaped the discussion
+- The central insight listeners are meant to walk away with
+
+Guidelines:
+- Write in paragraph form, like editorial copy
+- Reflect the conversational nature of the discussion
+- Avoid instructional tone or step-by-step explanations
+- Do not use headings, bullet points, citations, or HTML
+- Prioritize synthesis over completeness`
+*/
+
+  const SUMMARY_PROMPT = `Summarize the following conversation in a clear, narrative-style summary under 400 words.
+Focus on:
+- The main theme of the conversation
+- The most important ideas or frameworks discussed
+- How the speakers contributed or built on each other’s points
+- The overall takeaway or conclusion
+
+Guidelines:
+- Write in paragraph form (no section headers or bullet lists)
+- Keep the tone neutral and explanatory
+- Do not include citations, reference numbers, or HTML
+- Do not restate every example—prioritize meaning over detail
+`
+
+//  const SUMMARY_PROMPT =
+//    "Please provide a concise summary of the following conversation in less than 500 words. Focus on the main topics discussed, key insights shared, and important conclusions reached. Do not include HTML tags, and do not include citation markers or reference numbers like [1], [2] in your response."
 
   /** Fetches summary from LLM and returns cleaned text (citations stripped). */
   const fetchSummaryFromApi = async (conversationText: string): Promise<string> => {
