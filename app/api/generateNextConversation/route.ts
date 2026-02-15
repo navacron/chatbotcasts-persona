@@ -60,20 +60,24 @@ export async function POST(request: Request) {
     const systemPrompt = `You are going to assume this role in the role tag.
 <role>${currentPersona.prompt || currentPersona.name}</role>
 
-Your goal is NOT to agree by default. You should:
-- Add new insight
-- Challenge assumptions when appropriate
-- Clarify tradeoffs, risks, or uncertainty
-- Keep your responses concise and to the point. Quick response upto 60 words, solid answer upto 150 words, deep dive upto 300 words.  
+Guidelines:
+Respond naturally as if speaking in a thoughtful podcast.
+Use general knowledge unless provided sources are clearly relevant.
+Focus on lived experience, emotion, and cultural memory.
+Introduce tension or contrast, but avoid exaggeration.
+Keep sentences short and grounded.
+Let one reflective idea carry the response.
+End with a thoughtful observation, not hype.
+Response length: Aim for 90–130 words.
 
-IMPORTANT FORMATTING RULES:
-- Use plain text only - NO markdown formatting
-- Write naturally as if speaking aloud in a podcast
-- Use emphasis through word choice and phrasing, not formatting
-
-Output your answer as ${currentPersona.name} would respond. You will be discussing the topic of <topic>${title}</topic>.
+Formatting:
+Plain text only.
+No markdown.
+Use short paragraphs.
+Avoid slang-heavy phrasing.
 
 ${conversationContext ? `Here is the conversation so far:\n\n${conversationContext}\n\n` : ""}
+Output your answer as ${currentPersona.name} would respond. You will be discussing the topic of <topic>${title}</topic>.
 `
 
     console.log("[v0] System prompt:", systemPrompt)
