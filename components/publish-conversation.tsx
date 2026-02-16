@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { CheckCircle2, Loader2, LogIn, Sparkles } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useUser, SignInButton, SignUpButton } from "@clerk/nextjs"
+import Image from "next/image"
 
 interface PublishConversationProps {
   conversationData: any
@@ -20,6 +21,7 @@ interface PublishConversationProps {
   existingDescription?: string
   existingCategoryId?: string
   existingIsPublic?: boolean
+  existingFeatureImage?: string | null
   categories?: Category[]
 }
 
@@ -41,6 +43,7 @@ export default function PublishConversation({
   existingDescription = "",
   existingCategoryId = "",
   existingIsPublic = true,
+  existingFeatureImage = null,
   categories: categoriesProp,
 }: PublishConversationProps) {
   const suggestedSlug = editMode ? (existingSlug ?? "") : (parentSlug ? `${parentSlug}-2` : "")
@@ -57,6 +60,9 @@ export default function PublishConversation({
   const [categories, setCategories] = useState<Category[]>([])
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>(editMode ? existingCategoryId : "")
   const [loadingCategories, setLoadingCategories] = useState(!editMode || !categoriesProp)
+  const [featureImage, setFeatureImage] = useState<string | null>(existingFeatureImage || null)
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const { user, isLoaded } = useUser()
   const autoSummaryStartedRef = useRef(false)
@@ -224,6 +230,43 @@ Guidelines:
     }
   }
 
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || !event.target.files[0]) return
+
+    const file = event.target.files[0]
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Image must be smaller than 5MB")
+      return
+    }
+
+    setUploading(true)
+    setError(null)
+
+    try {
+      const { upload } = await import("@vercel/blob/client")
+      const newBlob = await upload(file.name, file, {
+        access: "public",
+        handleUploadUrl: "/api/upload/image",
+      })
+
+      setFeatureImage(newBlob.url)
+    } catch (error) {
+      console.error("Error uploading image:", error)
+      setError("Failed to upload image. Please try again.")
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handleRemoveImage = () => {
+    setFeatureImage(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
+    }
+  }
+
   const handlePublish = async () => {
     if (!isAuthenticated) {
       setError("Please sign in to publish your conversation")
@@ -296,6 +339,7 @@ Guidelines:
             isPublic,
             categoryId: selectedCategoryId,
             personaIds: chatData?.personas || [],
+            feature_image: featureImage,
           }),
         })
         const result = await response.json()
@@ -314,6 +358,7 @@ Guidelines:
         isPublic,
         personaIds: chatData?.personas || [],
         categoryId: selectedCategoryId,
+        feature_image: featureImage,
       }
       if (parentConversationId) body.parentConversationId = parentConversationId
 
@@ -570,6 +615,61 @@ Guidelines:
           />
           <p className="text-xs text-muted-foreground">
             Leave empty and a summary may appear automatically in a few seconds, or click "Generate Summary" to generate now. You can also publish with an empty description to generate on publish.
+          </p>
+        </div>
+
+        {/* Feature Image Upload */}
+        <div className="space-y-2">
+          <label className="text-sm font-semibold text-foreground">
+            Feature Image <span className="text-muted-foreground font-normal">(Optional)</span>
+          </label>
+
+          {featureImage && (
+            <div className="relative w-full aspect-[16/9] max-h-[400px] rounded-lg overflow-hidden border border-border">
+              <Image
+                src={featureImage}
+                alt="Feature image preview"
+                fill
+                className="object-contain bg-muted"
+              />
+              <button
+                type="button"
+                onClick={handleRemoveImage}
+                className="absolute top-2 right-2 bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-sm"
+              >
+                Remove
+              </button>
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleImageUpload}
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              className="hidden"
+            />
+            <Button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              variant="outline"
+            >
+              {uploading ? (
+                <>
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  Uploading...
+                </>
+              ) : featureImage ? (
+                "Change Image"
+              ) : (
+                "Upload Image"
+              )}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Recommended: 1200x630px for best social media preview. Max 5MB. Supports JPEG, PNG, GIF, WebP.
           </p>
         </div>
 

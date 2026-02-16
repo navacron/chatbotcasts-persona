@@ -46,6 +46,7 @@
     "@supabase/ssr": "latest",
     "@supabase/supabase-js": "latest",
     "@vercel/analytics": "latest",
+    "@vercel/blob": "latest",
     "ai": "latest",
     "autoprefixer": "^10.4.20",
     "bcryptjs": "3.0.3",

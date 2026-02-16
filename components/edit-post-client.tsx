@@ -25,6 +25,7 @@ interface ConversationForEdit {
   data: { messages?: Array<{ id?: number; personaId?: string; role?: string; content?: string; citations?: string[]; timestamp?: string }>; title?: string; allPersonaIds?: string[] }
   is_public?: boolean
   category_id?: string
+  feature_image?: string | null
 }
 
 interface EditPostClientProps {
@@ -126,6 +127,7 @@ export default function EditPostClient({
         existingDescription={effectiveConversation.description ?? ""}
         existingCategoryId={effectiveConversation.category_id ?? ""}
         existingIsPublic={effectiveConversation.is_public ?? true}
+        existingFeatureImage={effectiveConversation.feature_image ?? null}
         categories={categories}
       />
     </div>

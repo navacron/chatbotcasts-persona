@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { title, description, topic, data, isPublic, slug: slugFromBody, personaIds, categoryId, parentConversationId } = body
+    const { title, description, topic, data, isPublic, slug: slugFromBody, personaIds, categoryId, parentConversationId, feature_image } = body
 
     // Validate required fields first (before checking credits)
     if (!title || !topic || !data) {
@@ -199,6 +199,7 @@ export async function POST(request: NextRequest) {
         is_public: isPublic,
         slug,
         category_id: categoryId,
+        feature_image: feature_image || null,
         ...(parent_conversation_id && {
           parent_conversation_id,
           root_conversation_id: root_conversation_id ?? undefined,
