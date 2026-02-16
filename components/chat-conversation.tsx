@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import ChatMessage from "./chat-message"
 import PersonaSwitcher from "./persona-switcher"
+import PlanWidget from "./plan-widget"
 import { Send, Share2, Code, User } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useUser } from "@clerk/nextjs"
@@ -76,6 +77,105 @@ export default function ChatConversation({ data, onPublish }: ChatConversationPr
   const [personas] = useState<string[]>(data?.personas || [])
   const [showDebug, setShowDebug] = useState(false)
   const [debugInfo, setDebugInfo] = useState<any>(null)
+
+  // Plan widget state
+  const [plan, setPlan] = useState<string>(() => data?.plan?.text || "")
+  const [focusedLineIndex, setFocusedLineIndex] = useState<number>(() => data?.plan?.focusedLineIndex || 0)
+  const [isGeneratingPlan, setIsGeneratingPlan] = useState(false)
+
+  // Topic progression controls
+  const [messagesPerTopic, setMessagesPerTopic] = useState(() => data?.plan?.messagesPerTopic || 3)
+  const [messagesSinceLastAdvance, setMessagesSinceLastAdvance] = useState(0)
+  const [isTopicLocked, setIsTopicLocked] = useState(() => data?.plan?.isTopicLocked || false)
+
+  // Helper: Generate initial plan
+  const generateInitialPlan = async () => {
+    if (!data?.topic || plan) return // Don't generate if already exists
+
+    setIsGeneratingPlan(true)
+    try {
+      const response = await fetch("/api/generatePlan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: data.topic,
+          description: data.description || "",
+        }),
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        setPlan(result.plan)
+        setFocusedLineIndex(0)
+      }
+    } catch (error) {
+      console.error("[v0] Error generating plan:", error)
+    } finally {
+      setIsGeneratingPlan(false)
+    }
+  }
+
+  // Helper: Regenerate plan
+  const handleRegeneratePlan = async () => {
+    setIsGeneratingPlan(true)
+    try {
+      const response = await fetch("/api/generatePlan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: data?.topic || "General Discussion",
+          description: data?.description || "",
+        }),
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        setPlan(result.plan)
+        setFocusedLineIndex(0)
+      }
+    } catch (error) {
+      console.error("[v0] Error regenerating plan:", error)
+    } finally {
+      setIsGeneratingPlan(false)
+    }
+  }
+
+  // Helper: Get focused line text
+  const getFocusedLineText = (planText: string, focusedIndex: number): string => {
+    if (!planText) return ""
+
+    const lines = planText
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+
+    if (focusedIndex >= 0 && focusedIndex < lines.length) {
+      // Remove manual marker (*) and numbering (1., 2., etc.)
+      return lines[focusedIndex].replace(/^\*\s*/, "").replace(/^\d+\.\s*/, "")
+    }
+
+    return ""
+  }
+
+  // Helper: Handle previous topic
+  const handlePreviousTopic = () => {
+    setFocusedLineIndex(Math.max(0, focusedLineIndex - 1))
+    setMessagesSinceLastAdvance(0)
+  }
+
+  // Helper: Handle next topic
+  const handleNextTopic = () => {
+    const planLines = plan.split("\n").filter((l) => l.trim())
+    setFocusedLineIndex(Math.min(focusedLineIndex + 1, planLines.length - 1))
+    setMessagesSinceLastAdvance(0)
+  }
+
+  // Generate plan on mount (new conversations only)
+  useEffect(() => {
+    if (!plan && data?.topic && messages.length === 0) {
+      generateInitialPlan()
+    }
+  }, []) // Only run once on mount
 
   useEffect(() => {
     const fetchPersonas = async () => {
@@ -215,10 +315,14 @@ export default function ChatConversation({ data, onPublish }: ChatConversationPr
       console.log("[v0] All personas:", personas)
       console.log("[v0] Chat history:", messages)
 
+      // Get focused subtopic from plan
+      const focusedSubtopic = plan ? getFocusedLineText(plan, focusedLineIndex) : ""
+
       const requestPayload = {
         currentPersonaId: speakerToUse,
         allPersonaIds: personas,
         title: data?.topic || "General Discussion",
+        focusedSubtopic: focusedSubtopic, // NEW: Add focused subtopic
         messages: messages.map((msg, index) => ({
           id: msg.id || index + 1,
           personaId: msg.persona,
@@ -289,6 +393,23 @@ export default function ChatConversation({ data, onPublish }: ChatConversationPr
       setMessages([...messages, newMessage])
       setNextSpeaker(null)
 
+      // Auto-increment focus based on topic progression settings
+      if (plan && !isTopicLocked) {
+        setMessagesSinceLastAdvance((prev) => {
+          const newCount = prev + 1
+
+          // Check if we should advance to next topic
+          if (newCount >= messagesPerTopic) {
+            const planLines = plan.split("\n").filter((l) => l.trim())
+            const nextIndex = Math.min(focusedLineIndex + 1, planLines.length - 1)
+            setFocusedLineIndex(nextIndex)
+            return 0 // Reset counter
+          }
+
+          return newCount
+        })
+      }
+
       if (turnMode === "round-robin" || turnMode === "alternating") {
         const nextIndex = (currentCycleIndex + 1) % personas.length
         setCurrentCycleIndex(nextIndex)
@@ -316,6 +437,12 @@ export default function ChatConversation({ data, onPublish }: ChatConversationPr
         topic: data?.topic || "New Conversation",
         turnMode,
         numTurns,
+        plan: {
+          text: plan,
+          focusedLineIndex: focusedLineIndex,
+          messagesPerTopic: messagesPerTopic,
+          isTopicLocked: isTopicLocked,
+        },
       })
     }
   }
@@ -406,6 +533,26 @@ export default function ChatConversation({ data, onPublish }: ChatConversationPr
             )}
           </CardContent>
         </Card>
+      )}
+
+      {/* Plan Widget */}
+      {plan && (
+        <PlanWidget
+          initialPlan={plan}
+          conversationTitle={data?.topic || "New Conversation"}
+          onPlanChange={setPlan}
+          onFocusedLineChange={setFocusedLineIndex}
+          focusedLineIndex={focusedLineIndex}
+          isGenerating={isGeneratingPlan}
+          onRegeneratePlan={handleRegeneratePlan}
+          messagesPerTopic={messagesPerTopic}
+          onMessagesPerTopicChange={setMessagesPerTopic}
+          messagesSinceLastAdvance={messagesSinceLastAdvance}
+          isTopicLocked={isTopicLocked}
+          onTopicLockToggle={() => setIsTopicLocked(!isTopicLocked)}
+          onPreviousTopic={handlePreviousTopic}
+          onNextTopic={handleNextTopic}
+        />
       )}
 
       <div className="bg-white border border-border rounded-xl overflow-hidden flex flex-col h-[calc(100vh-280px)] min-h-[400px] md:h-[calc(100vh-240px)]">

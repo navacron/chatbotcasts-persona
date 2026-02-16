@@ -11,7 +11,10 @@ export function stripMarkdown(text: string): string {
 
   // Remove bold/italic markdown (**text**, *text*, __text__, _text_)
   cleaned = cleaned.replace(/\*\*([^*]+)\*\*/g, "$1") // **bold**
+  cleaned = cleaned.replace(/\*{2,}/g, "") // Bare ** or *** (no content)
   cleaned = cleaned.replace(/\*([^*]+)\*/g, "$1") // *italic*
+  cleaned = cleaned.replace(/\*+$/g, "") // Trailing asterisks
+  cleaned = cleaned.replace(/^\*+/gm, "") // Leading asterisks
   cleaned = cleaned.replace(/__([^_]+)__/g, "$1") // __bold__
   cleaned = cleaned.replace(/_([^_]+)_/g, "$1") // _italic_
 

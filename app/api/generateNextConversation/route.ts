@@ -11,13 +11,14 @@ export async function POST(request: Request) {
     const supabase = await createClient()
 
     const body = await request.json()
-    const { currentPersonaId, allPersonaIds, messages, title } = body
+    const { currentPersonaId, allPersonaIds, messages, title, focusedSubtopic } = body
 
     console.log("[v0] Generate conversation request:", {
       currentPersonaId,
       allPersonaIds,
       messagesLength: messages?.length || 0,
       title,
+      focusedSubtopic,
     })
 
     // Validate input
@@ -60,7 +61,7 @@ export async function POST(request: Request) {
     const systemPrompt = `You are going to assume this role in the role tag.
 <role>${currentPersona.prompt || currentPersona.name}</role>
 
-Guidelines:
+${focusedSubtopic ? `Currently discussing: ${focusedSubtopic}\n\n` : ""}Guidelines:
 Respond naturally as if speaking in a thoughtful podcast.
 Use general knowledge unless provided sources are clearly relevant.
 Focus on lived experience, emotion, and cultural memory.
@@ -72,9 +73,11 @@ Response length: Aim for 90–130 words.
 
 Formatting:
 Plain text only.
-No markdown.
+NEVER use markdown formatting.
+NEVER use asterisks (**) for bold or emphasis.
 Use short paragraphs.
 Avoid slang-heavy phrasing.
+Use simple punctuation and plain sentences.
 
 ${conversationContext ? `Here is the conversation so far:\n\n${conversationContext}\n\n` : ""}
 Output your answer as ${currentPersona.name} would respond. You will be discussing the topic of <topic>${title}</topic>.
