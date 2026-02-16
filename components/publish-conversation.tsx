@@ -325,6 +325,15 @@ Guidelines:
         allPersonaIds: chatData?.personas || [],
         currentPersonaId: chatData?.personas?.[0] || null,
         messages: formattedMessages,
+        // Include plan data if present (for persistence across edit/extend)
+        ...(chatData?.plan && {
+          plan: {
+            text: chatData.plan.text || "",
+            focusedLineIndex: chatData.plan.focusedLineIndex || 0,
+            messagesPerTopic: chatData.plan.messagesPerTopic || 3,
+            isTopicLocked: chatData.plan.isTopicLocked || false,
+          }
+        }),
       }
 
       if (editMode && conversationId) {
@@ -582,6 +591,15 @@ Guidelines:
             {chatData?.messages?.length || 0} messages in this conversation
           </p>
         </div>
+
+        {chatData?.plan?.text && (
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-foreground">Discussion Plan</label>
+            <div className="bg-muted/50 border border-border rounded-lg p-4">
+              <pre className="text-sm text-foreground whitespace-pre-wrap font-sans">{chatData.plan.text}</pre>
+            </div>
+          </div>
+        )}
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">

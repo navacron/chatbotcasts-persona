@@ -50,6 +50,10 @@ function buildConversationData(conversation: ConversationForEdit, linkedPersonaI
     messages: convertedMessages,
     turnMode: "manual" as const,
     numTurns: 3,
+    // Include plan data if it exists in the saved conversation
+    ...(conversation.data?.plan && {
+      plan: conversation.data.plan
+    }),
   }
 }
 

@@ -99,6 +99,10 @@ export default function CreatePageClient() {
             messages: convertedMessages,
             turnMode: "manual",
             numTurns: 3,
+            // Inherit plan from parent conversation when extending
+            ...(data.conversation.data?.plan && {
+              plan: data.conversation.data.plan
+            }),
           }
 
           console.log("[v0] Converted conversation data:", conversationData)
