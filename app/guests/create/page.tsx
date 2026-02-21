@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import Header from '@/components/header'
 import { useState } from 'react'
-import { ArrowLeft, Upload, X } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
@@ -12,7 +12,6 @@ export default function CreateGuestPage() {
   const router = useRouter()
   const [name, setName] = useState('')
   const [prompt, setPrompt] = useState('')
-  const [documentLink, setDocumentLink] = useState('')
   const [slug, setSlug] = useState('')
   const [isPublic, setIsPublic] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -42,7 +41,7 @@ export default function CreateGuestPage() {
         body: JSON.stringify({
           name: name.trim(),
           prompt: prompt.trim(),
-          document_link: documentLink.trim() || null,
+          document_link: null,
           slug: slug.trim(),
           is_public: isPublic,
         }),
@@ -149,19 +148,6 @@ export default function CreateGuestPage() {
                 onChange={(e) => setPrompt(e.target.value)}
                 className="w-full min-h-32 p-3 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary"
               />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-foreground">Document Link</label>
-              <Input
-                placeholder="https://example.com/document.pdf"
-                value={documentLink}
-                onChange={(e) => setDocumentLink(e.target.value)}
-                className="h-11"
-              />
-              <p className="text-xs text-muted-foreground">
-                Link to a document that provides context for this persona
-              </p>
             </div>
 
             <div className="space-y-2">
