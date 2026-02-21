@@ -58,10 +58,9 @@ export async function POST(request: Request) {
         .join("\n\n")
     }
 
-    const systemPrompt = `You are going to assume this role in the role tag.
-<role>${currentPersona.prompt || currentPersona.name}</role>
+    const systemPrompt = `You are ${currentPersona.name}. And your role is: ${currentPersona.prompt}`
 
-${focusedSubtopic ? `Currently discussing: ${focusedSubtopic}\n\n` : ""}Guidelines:
+    const userPrompt = `${focusedSubtopic ? `Currently discussing: ${focusedSubtopic}\n\n` : ""}Guidelines:
 Respond naturally as if speaking in a thoughtful podcast.
 Use general knowledge unless provided sources are clearly relevant.
 Focus on lived experience, emotion, and cultural memory.
@@ -79,26 +78,19 @@ Use short paragraphs.
 Avoid slang-heavy phrasing.
 Use simple punctuation and plain sentences.
 
-${conversationContext ? `Here is the conversation so far:\n\n${conversationContext}\n\n` : ""}
-Output your answer as ${currentPersona.name} would respond. You will be discussing the topic of <topic>${title}</topic>.
-`
+${conversationContext ? `Here is the conversation so far:\n\n${conversationContext}\n\n` : ""}Output your answer as ${currentPersona.name} would respond. You will be discussing the topic of <topic>${title}</topic>.`
 
     console.log("[v0] System prompt:", systemPrompt)
+    console.log("[v0] User prompt:", userPrompt)
 
     const perplexity = createPerplexity({
       apiKey: process.env.PERPLEXITY_API_KEY,
     })
 
-    // Use sonar-online for real-time web search and better citations
-    // sonar-online provides access to recent news and more relevant citations
     const result = await generateText({
       model: perplexity("sonar"),
-      messages: [
-        {
-          role: "user",
-          content: systemPrompt,
-        },
-      ],
+      system: systemPrompt,
+      messages: [{ role: "user", content: userPrompt }],
       maxTokens: 500,
       temperature: 0.8,
     } as any)
@@ -159,7 +151,7 @@ ${contentWithoutCitations}`
       }
     }
 
-    console.log("[v0] OpenAI generated:", reformattedContent)
+    console.log("[v0] Final content:", reformattedContent)
     return NextResponse.json({
       success: true,
       content: reformattedContent,
