@@ -25,6 +25,14 @@ const getPersonaTitle = (prompt: string): string => {
     : firstSentence
 }
 
+// Full prompt for tooltip - limit length for very long prompts
+const getPersonaTooltip = (prompt: string, maxLength = 400): string => {
+  if (!prompt?.trim()) return ''
+  const trimmed = prompt.trim()
+  if (trimmed.length <= maxLength) return trimmed
+  return trimmed.slice(0, maxLength) + '…'
+}
+
 // Helper function to get avatar emoji based on name
 const getPersonaAvatar = (name: string): string => {
   const lowerName = name.toLowerCase()
@@ -122,15 +130,31 @@ export default function PersonaSelector({
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
       {personas.map((persona) => {
         const isSelected = selected.includes(persona.id)
+        const tooltipText = getPersonaTooltip(persona.prompt)
 
         return (
-          <button
+          <div
             key={persona.id}
-            onClick={() => handleToggle(persona.id)}
+            className="relative group"
             onMouseEnter={() => setHoveredId(persona.id)}
             onMouseLeave={() => setHoveredId(null)}
-            className="relative group"
           >
+            {/* Hover tooltip - full description */}
+            {tooltipText && hoveredId === persona.id && (
+              <div
+                className="absolute bottom-full left-0 right-0 mb-1 z-50 px-3 py-2.5 rounded-lg bg-popover border border-border shadow-lg text-left"
+                style={{ minWidth: '200px', maxWidth: '320px' }}
+              >
+                <div className="text-xs font-semibold text-foreground mb-1">{persona.name}</div>
+                <p className="text-xs text-muted-foreground whitespace-pre-wrap max-h-32 overflow-y-auto">
+                  {tooltipText}
+                </p>
+              </div>
+            )}
+            <button
+              onClick={() => handleToggle(persona.id)}
+              className="w-full text-left"
+            >
             <div
               className={`
                 h-24 px-4 py-3 rounded-lg border-2 transition-all duration-200
@@ -156,7 +180,7 @@ export default function PersonaSelector({
               </div>
 
               {/* Content */}
-              <div className="flex-1 text-left">
+              <div className="flex-1 text-left min-w-0">
                 <div className="font-semibold text-foreground text-sm">
                   {persona.name}
                 </div>
@@ -175,6 +199,7 @@ export default function PersonaSelector({
               )}
             </div>
           </button>
+          </div>
         )
       })}
     </div>
@@ -302,14 +327,30 @@ export default function PersonaSelector({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {hostPersonas.map((persona) => {
                   const isSelected = selected.includes(persona.id)
+                  const tooltipText = getPersonaTooltip(persona.prompt)
                   return (
-                    <button
+                    <div
                       key={persona.id}
-                      onClick={() => handleToggle(persona.id)}
+                      className="relative group"
                       onMouseEnter={() => setHoveredId(persona.id)}
                       onMouseLeave={() => setHoveredId(null)}
-                      className="relative group"
                     >
+                      {/* Hover tooltip - full description */}
+                      {tooltipText && hoveredId === persona.id && (
+                        <div
+                          className="absolute bottom-full left-0 right-0 mb-1 z-50 px-3 py-2.5 rounded-lg bg-popover border border-border shadow-lg text-left"
+                          style={{ minWidth: '200px', maxWidth: '320px' }}
+                        >
+                          <div className="text-xs font-semibold text-foreground mb-1">{persona.name}</div>
+                          <p className="text-xs text-muted-foreground whitespace-pre-wrap max-h-32 overflow-y-auto">
+                            {tooltipText}
+                          </p>
+                        </div>
+                      )}
+                      <button
+                        onClick={() => handleToggle(persona.id)}
+                        className="w-full text-left"
+                      >
                       <div
                         className={`
                           h-24 px-4 py-3 rounded-lg border-2 transition-all duration-200
@@ -332,7 +373,7 @@ export default function PersonaSelector({
                             {getPersonaAvatar(persona.name)}
                           </div>
                         </div>
-                        <div className="flex-1 text-left">
+                        <div className="flex-1 text-left min-w-0">
                           <div className="font-semibold text-foreground text-sm">{persona.name}</div>
                           <div className="text-xs text-muted-foreground line-clamp-2">
                             {getPersonaTitle(persona.prompt)}
@@ -347,6 +388,7 @@ export default function PersonaSelector({
                         )}
                       </div>
                     </button>
+                    </div>
                   )
                 })}
                 {/* Add Custom Agent - beside Host */}
