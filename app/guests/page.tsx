@@ -124,11 +124,9 @@ export default function GuestsPage() {
                 guest={{
                   id: persona.id,
                   name: persona.name,
-                  title: persona.prompt?.substring(0, 100) || "AI Persona",
+                  title: persona.prompt || "AI Persona",
                   author: activeTab === "my" ? "You" : "Community",
-                  uses: 0,
-                  rating: 4.5,
-                  slug: persona.slug, // Pass slug to guest card for linking
+                  slug: persona.slug,
                 }}
               />
             ))
