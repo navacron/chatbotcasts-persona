@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Check, Search, User } from 'lucide-react'
+import { Check, Search, User, Plus } from 'lucide-react'
 import { Input } from '@/components/ui/input'
-import { useUser, SignUpButton } from '@clerk/nextjs'
+import { useUser, SignUpButton, SignInButton } from '@clerk/nextjs'
+import Link from 'next/link'
 
 interface Persona {
   id: string
@@ -298,7 +299,87 @@ export default function PersonaSelector({
           {hostPersonas.length > 0 && (
             <div className="space-y-2">
               <h3 className="text-sm font-semibold text-foreground">Host</h3>
-              {renderPersonaGrid(hostPersonas)}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {hostPersonas.map((persona) => {
+                  const isSelected = selected.includes(persona.id)
+                  return (
+                    <button
+                      key={persona.id}
+                      onClick={() => handleToggle(persona.id)}
+                      onMouseEnter={() => setHoveredId(persona.id)}
+                      onMouseLeave={() => setHoveredId(null)}
+                      className="relative group"
+                    >
+                      <div
+                        className={`
+                          h-24 px-4 py-3 rounded-lg border-2 transition-all duration-200
+                          flex items-center gap-3
+                          ${
+                            isSelected
+                              ? 'border-primary bg-primary/10'
+                              : 'border-border/50 bg-background hover:border-border'
+                          }
+                          ${hoveredId === persona.id ? 'shadow-lg' : ''}
+                        `}
+                      >
+                        <div className="flex-shrink-0">
+                          <div
+                            className={`
+                              h-12 w-12 rounded-full flex items-center justify-center text-xl
+                              bg-gradient-to-br ${getPersonaColor(persona.name)}
+                            `}
+                          >
+                            {getPersonaAvatar(persona.name)}
+                          </div>
+                        </div>
+                        <div className="flex-1 text-left">
+                          <div className="font-semibold text-foreground text-sm">{persona.name}</div>
+                          <div className="text-xs text-muted-foreground line-clamp-2">
+                            {getPersonaTitle(persona.prompt)}
+                          </div>
+                        </div>
+                        {isSelected && (
+                          <div className="flex-shrink-0">
+                            <div className="h-5 w-5 rounded bg-primary flex items-center justify-center">
+                              <Check className="h-3 w-3 text-primary-foreground" />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  )
+                })}
+                {/* Add Custom Agent - beside Host */}
+                <div className="flex items-stretch">
+                  {isLoggedIn ? (
+                    <Link href="/guests/create" className="block w-full">
+                      <div className="h-24 px-4 py-3 rounded-lg border-2 border-dashed border-border/50 bg-background hover:border-primary hover:bg-primary/5 transition-all duration-200 flex items-center justify-center gap-2 w-full">
+                        <Plus className="h-5 w-5 text-muted-foreground" />
+                        <span className="text-sm font-medium text-muted-foreground">Add Custom Agent</span>
+                      </div>
+                    </Link>
+                  ) : (
+                    <div className="h-24 px-4 py-3 rounded-lg border-2 border-dashed border-border/50 bg-background flex flex-col items-center justify-center gap-2 w-full">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Plus className="h-5 w-5" />
+                        <span>Sign in to create your own agent</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <SignInButton mode="modal" fallbackRedirectUrl="/create">
+                          <button className="text-xs px-3 py-1.5 rounded-md border border-border hover:bg-secondary transition-colors">
+                            Sign in
+                          </button>
+                        </SignInButton>
+                        <SignUpButton mode="modal" fallbackRedirectUrl="/create">
+                          <button className="text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:opacity-90 transition-opacity">
+                            Sign up
+                          </button>
+                        </SignUpButton>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
         </div>

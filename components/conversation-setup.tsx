@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import PersonaSelector from "./persona-selector"
 import { Sparkles } from "lucide-react"
-import Link from "next/link"
 
 interface ConversationSetupProps {
   onStart: (data: any) => void
@@ -69,12 +68,6 @@ export default function ConversationSetup({ onStart }: ConversationSetupProps) {
             </div>
             <PersonaSelector selected={selectedPersonas} onChange={setSelectedPersonas} />
           </div>
-
-          <Link href="/guests/create">
-            <Button variant="outline" className="w-full border-dashed bg-transparent" type="button">
-              + Add Custom Agent Persona
-            </Button>
-          </Link>
 
           {/* Start Button */}
           <Button
