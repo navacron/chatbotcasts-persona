@@ -56,6 +56,23 @@ export default function ConversationSetup({ onStart }: ConversationSetupProps) {
               className="h-12 text-base bg-white border-border/50 text-foreground placeholder:text-muted-foreground/60"
             />
             <p className="text-xs text-muted-foreground">What would you like the personas to discuss?</p>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <span className="text-xs text-muted-foreground">Try:</span>
+              {[
+                "Plan a 10 Day Trip to France",
+                "Book Review of Atomic Habits",
+                "Human vs. AI: The Future of Customer Service",
+              ].map((example) => (
+                <button
+                  key={example}
+                  type="button"
+                  onClick={() => setTopic(example)}
+                  className="text-xs px-3 py-1.5 rounded-full bg-secondary/60 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+                >
+                  {example}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Persona Selection */}
