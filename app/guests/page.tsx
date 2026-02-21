@@ -33,6 +33,13 @@ export default function GuestsPage() {
     fetchPersonas()
   }, [searchQuery])
 
+  // Reset to community tab when user is not authenticated
+  useEffect(() => {
+    if (!isAuthenticated && activeTab === "my") {
+      setActiveTab("community")
+    }
+  }, [isAuthenticated, activeTab])
+
   const fetchPersonas = async () => {
     try {
       setLoading(true)
@@ -87,16 +94,18 @@ export default function GuestsPage() {
             >
               Community Agents
             </button>
-            <button
-              onClick={() => setActiveTab("my")}
-              className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
-                activeTab === "my"
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              My Agents
-            </button>
+            {isAuthenticated && (
+              <button
+                onClick={() => setActiveTab("my")}
+                className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
+                  activeTab === "my"
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                My Agents
+              </button>
+            )}
           </div>
 
           {/* Search */}
