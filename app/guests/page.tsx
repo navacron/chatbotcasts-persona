@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import Header from "@/components/header"
 import GuestCard from "@/components/guest-card"
 import Link from "next/link"
+import { SignInButton, SignUpButton } from "@clerk/nextjs"
 
 interface Persona {
   id: string
@@ -72,13 +73,25 @@ export default function GuestsPage() {
               <h1 className="text-4xl font-bold text-foreground">Manage Agents</h1>
               <p className="text-muted-foreground">Create and manage custom AI personas</p>
             </div>
-            {activeTab === "my" && (
+            {isAuthenticated ? (
               <Link href="/guests/create">
                 <Button className="bg-gradient-to-r from-primary to-accent hover:opacity-90">
                   <Plus className="h-4 w-4 mr-2" />
                   New Agent
                 </Button>
               </Link>
+            ) : (
+              <div className="flex items-center gap-2">
+                <SignInButton mode="modal" fallbackRedirectUrl="/guests">
+                  <Button variant="outline">Sign in</Button>
+                </SignInButton>
+                <SignUpButton mode="modal" fallbackRedirectUrl="/guests">
+                  <Button className="bg-gradient-to-r from-primary to-accent hover:opacity-90">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Sign up to create agent
+                  </Button>
+                </SignUpButton>
+              </div>
             )}
           </div>
 
