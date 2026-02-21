@@ -96,8 +96,8 @@ export default function HomeClient({ initialCategories, initialConversations }: 
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-12 flex-1">
-        {/* Search and Filters */}
-        <div className="space-y-6 mb-12">
+        {/* Search */}
+        <div className="mb-10">
           <form onSubmit={handleSearch}>
             <div className="flex gap-2">
               <div className="relative flex-1">
@@ -114,15 +114,18 @@ export default function HomeClient({ initialCategories, initialConversations }: 
               </Button>
             </div>
           </form>
+        </div>
 
-          {/* Category Filter */}
-          <div className="flex flex-wrap gap-2">
+        {/* Browse by Category - Prominent section */}
+        <div className="mb-14 rounded-xl border border-border bg-white p-6 md:p-8 shadow-sm">
+          <h2 className="text-xl md:text-2xl font-bold text-foreground mb-4">Browse by Category</h2>
+          <div className="flex flex-wrap gap-3">
             <button
               onClick={() => handleCategoryChange(null)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+              className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-all ${
                 selectedCategory === null
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-secondary text-foreground hover:bg-secondary/80"
+                  ? "bg-primary text-primary-foreground shadow-md"
+                  : "bg-secondary text-foreground hover:bg-secondary/80 hover:scale-105"
               }`}
             >
               All Categories
@@ -130,10 +133,10 @@ export default function HomeClient({ initialCategories, initialConversations }: 
             {categories.map((cat) => (
               <Link key={cat.id} href={`/category/${cat.slug}`}>
                 <button
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-all ${
                     selectedCategory === cat.id
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-secondary text-foreground hover:bg-secondary/80"
+                      ? "bg-primary text-primary-foreground shadow-md"
+                      : "bg-secondary text-foreground hover:bg-secondary/80 hover:scale-105"
                   }`}
                 >
                   {cat.name}
