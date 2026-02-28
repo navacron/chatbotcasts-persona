@@ -679,7 +679,7 @@ async function generateTitle(baseUrl: string, topic: string): Promise<string> {
 // ---------------------------------------------------------------------------
 
 // Matches the SUMMARY_PROMPT used in publish-conversation.tsx
-const SUMMARY_PROMPT = `Write a 2–3 sentence episode summary that helps a potential listener quickly decide if this episode is for them. Focus on the core topic and the key question or insight explored — not what each speaker said. Keep it punchy and engaging, like a podcast blurb. Plain text only, no bullet points or HTML.`
+const SUMMARY_PROMPT = `In 2-3 sentences, summarize what this episode is about so a listener can quickly decide if it interests them. Be concise and engaging. Plain text only.`
 
 async function generateDescription(
   baseUrl: string,

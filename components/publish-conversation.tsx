@@ -177,7 +177,7 @@ Guidelines:
 - Prioritize synthesis over completeness`
 */
 
-  const SUMMARY_PROMPT = `Write a 2–3 sentence episode summary that helps a potential listener quickly decide if this episode is for them. Focus on the core topic and the key question or insight explored — not what each speaker said. Keep it punchy and engaging, like a podcast blurb. Plain text only, no bullet points or HTML.`
+  const SUMMARY_PROMPT = `In 2-3 sentences, summarize what this episode is about so a listener can quickly decide if it interests them. Be concise and engaging. Plain text only.`
 
 //  const SUMMARY_PROMPT =
 //    "Please provide a concise summary of the following conversation in less than 500 words. Focus on the main topics discussed, key insights shared, and important conclusions reached. Do not include HTML tags, and do not include citation markers or reference numbers like [1], [2] in your response."
