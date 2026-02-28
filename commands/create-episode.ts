@@ -4,12 +4,13 @@
  * Creates and publishes a full podcast episode by calling the Next.js API routes.
  * No external npm dependencies — uses Node 18+ built-ins only.
  * # Get token from browser:
-  #   await window.Clerk?.session?.getToken()
+   await window.Clerk?.session?.getToken()
  * Usage:
- *   npx tsx commands/create-episode.ts \
- *     --token "eyJhbGci..." \
- *     --topic "The Future of Renewable Energy" \
- *     --guests "Aria"
+    npx tsx commands/create-episode.ts \
+      --token "eyJhbGci..." \
+      --topic "The Future of Renewable Energy" \
+      --guests "Aria"
+      --debug
  *
  * With all optional flags (against production):
  *   npx tsx commands/create-episode.ts \
@@ -32,6 +33,10 @@
  */
 
 import { parseArgs } from "node:util"
+import { readFileSync } from "node:fs"
+import { resolve } from "node:path"
+
+const SESSION_FILE = resolve(process.cwd(), ".clerk-session")
 
 // ---------------------------------------------------------------------------
 // Types
@@ -62,13 +67,14 @@ interface Category {
 }
 
 interface ParsedArgs {
-  token: string
+  token: string | undefined
   topic: string
   guests: string[]
   slug: string | undefined
   title: string | undefined
   turns: number
   baseUrl: string
+  debug: boolean
 }
 
 interface PersonasResponse {
@@ -119,6 +125,23 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+function waitForEnter(label: string): Promise<void> {
+  return new Promise((resolve) => {
+    process.stderr.write(`\n[DEBUG] ${label}\nPress Enter to continue...`)
+    process.stdin.setRawMode?.(false)
+    process.stdin.resume()
+    process.stdin.setEncoding("utf8")
+    const onData = (chunk: string) => {
+      if (chunk === "\n" || chunk === "\r" || chunk === "\r\n") {
+        process.stdin.removeListener("data", onData)
+        process.stdin.pause()
+        resolve()
+      }
+    }
+    process.stdin.on("data", onData)
+  })
+}
+
 function generateMessageId(): string {
   const rand = Math.floor(Math.random() * 9000) + 1000
   return `${Date.now()}-${rand}`
@@ -138,15 +161,114 @@ function validateSlug(slug: string): boolean {
   return /^[a-z0-9-]+$/.test(slug) && slug.length <= 60
 }
 
+function decodeJwtPayload(token: string): Record<string, unknown> {
+  const parts = token.split(".")
+  if (parts.length < 2) return {}
+  return JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8"))
+}
+
 function extractHostName(token: string): string {
   try {
-    const parts = token.split(".")
-    if (parts.length < 2) return "Host"
-    const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8"))
-    return payload.name || payload.given_name || "Host"
+    const payload = decodeJwtPayload(token)
+    return (payload.name as string) || (payload.given_name as string) || "Host"
   } catch {
     return "Host"
   }
+}
+
+function extractSessionId(token: string): string | undefined {
+  try {
+    const payload = decodeJwtPayload(token)
+    return payload.sid as string | undefined
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * Refreshes a Clerk session token using the Backend API.
+ * Requires CLERK_SECRET_KEY in environment (already in .env.local).
+ * Falls back to interactive prompt if not available.
+ */
+async function refreshClerkToken(currentToken: string): Promise<string> {
+  const sessionId = extractSessionId(currentToken)
+
+  if (sessionId) {
+    log(`  Token expired — auto-refreshing via Clerk API (session: ${sessionId.slice(0, 16)}...)`)
+    try {
+      const token = await clerkTokenFromSessionId(sessionId)
+      if (token) {
+        log(`  Token refreshed successfully.`)
+        return token
+      }
+    } catch (e) {
+      log(`  Clerk API unreachable (${e instanceof Error ? e.message : e}), falling back to manual entry.`)
+    }
+  } else {
+    log(`  No session ID found in token — falling back to manual entry.`)
+  }
+
+  // Fallback: prompt user to paste a fresh token
+  return promptFreshToken()
+}
+
+function loadSessionId(): string | undefined {
+  try {
+    return readFileSync(SESSION_FILE, "utf8").trim() || undefined
+  } catch {
+    return undefined
+  }
+}
+
+async function clerkTokenFromSessionId(sessionId: string): Promise<string | undefined> {
+  const rawKey = process.env.CLERK_SECRET_KEY_PROD || process.env.CLERK_SECRET_KEY
+  const secretKey = rawKey?.replace(/^["']|["']$/g, "").trim()
+  if (!secretKey) return undefined
+
+  const res = await fetch(`https://api.clerk.com/v1/sessions/${sessionId}/tokens`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${secretKey}`, "Content-Type": "application/json" },
+  })
+  if (!res.ok) {
+    const body = await res.text()
+    log(`  Clerk API returned ${res.status}: ${body}`)
+    return undefined
+  }
+  const data = await res.json() as { jwt: string }
+  return data.jwt
+}
+
+/**
+ * Bootstrap: get a valid token to start the script.
+ * - If --token provided: use it and save its session ID for future runs.
+ * - If no --token: load saved session ID and auto-generate a token via Clerk API.
+ * - If neither: exit with instructions.
+ */
+async function getInitialToken(rawToken: string | undefined): Promise<string> {
+  if (rawToken) {
+    return rawToken
+  }
+
+  // No token — try saved session ID
+  const sessionId = loadSessionId()
+  if (!sessionId) {
+    log(`\nError: No saved session found. Run setup first:`)
+    log(`  npx tsx commands/setup-session.ts --token "eyJ..."`)
+    log(``)
+    log(`  Get the token from the browser console on chatbotcasts.com:`)
+    log(`    await window.Clerk?.session?.getToken()`)
+    process.exit(1)
+  }
+
+  log(`  Using saved session ID — generating token via Clerk API...`)
+  const token = await clerkTokenFromSessionId(sessionId)
+  if (!token) {
+    log(`  Error: failed to generate token from saved session.`)
+    log(`  The session may have been revoked. Provide --token to re-authenticate.`)
+    process.exit(1)
+  }
+  log(`  Token generated automatically.`)
+  return token
 }
 
 class ApiError extends Error {
@@ -217,17 +339,17 @@ function parseCliArgs(): ParsedArgs {
       title: { type: "string" },
       turns: { type: "string" },
       "base-url": { type: "string" },
+      debug: { type: "boolean" },
     },
   })
 
   const errors: string[] = []
-  if (!values.token) errors.push("--token is required")
   if (!values.topic) errors.push("--topic is required")
   if (!values.guests) errors.push("--guests is required (comma-separated persona name substrings)")
 
   if (errors.length > 0) {
     for (const e of errors) log(`Error: ${e}`)
-    log(`\nUsage:\n  npx tsx commands/create-episode.ts --token <jwt> --topic <text> --guests <names>`)
+    log(`\nUsage:\n  npx tsx commands/create-episode.ts --topic <text> --guests <names> [--token <jwt>]`)
     process.exit(1)
   }
 
@@ -237,20 +359,21 @@ function parseCliArgs(): ParsedArgs {
     process.exit(1)
   }
 
-  const turnsRaw = values.turns ? parseInt(values.turns, 10) : 3
+  const turnsRaw = values.turns ? parseInt(values.turns, 10) : 2
   if (isNaN(turnsRaw) || turnsRaw < 1) {
     log(`Error: --turns must be a positive integer`)
     process.exit(1)
   }
 
   return {
-    token: values.token!,
+    token: values.token,
     topic: values.topic!,
     guests: values.guests!.split(",").map((g) => g.trim()).filter(Boolean),
     slug: slug || undefined,
     title: values.title || undefined,
     turns: turnsRaw,
     baseUrl: values["base-url"] || "http://localhost:3000",
+    debug: values.debug ?? false,
   }
 }
 
@@ -402,15 +525,20 @@ async function generateHumanTurn(
           .join("\n\n")
       : ""
 
-  const prompt =
+  const systemPrompt = `You are ${hostName}, a curious person participating in a discussion. You are not an expert or a host — you are an interested member of the public who asks genuine, conversational questions.`
+
+  const userPrompt =
     exchangeIndex === 0
-      ? `You are ${hostName}, a curious podcast host. Generate a natural opening question to start a podcast conversation about the subtopic "${subtopic}" within the broader topic "${topic}". Keep it conversational, 1-2 sentences, no more than 30 words. Plain text only.`
-      : `You are ${hostName}, a podcast host. Based on this recent conversation:\n\n${context}\n\nGenerate a natural follow-up question about "${subtopic}". Keep it conversational, 1-2 sentences. Plain text only.`
+      ? `Generate a natural opening question about the subtopic "${subtopic}" within the broader topic "${topic}". Keep it genuine and conversational, 1-2 sentences, no more than 30 words. Plain text only.`
+      : `Based on this recent conversation:\n\n${context}\n\nAsk a natural follow-up question about "${subtopic}". 1-2 sentences. Plain text only.`
 
   const res = await apiFetch<PerplexityResponse>(`${baseUrl}/api/ai/perplexity`, {
     method: "POST",
     body: JSON.stringify({
-      messages: [{ role: "user", content: prompt }],
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
     }),
   })
 
@@ -446,7 +574,8 @@ async function generateConversation(
   topic: string,
   subtopics: string[],
   guests: Persona[],
-  turns: number
+  turns: number,
+  debug: boolean
 ): Promise<Message[]> {
   log("Phase 4: Generating conversation...")
 
@@ -479,6 +608,12 @@ async function generateConversation(
       }
       messages.push(humanMsg)
 
+      if (debug) {
+        log(`\n--- ${hostName} (host) ---`)
+        log(humanContent)
+        await waitForEnter(`Host turn done (subtopic ${si + 1}, exchange ${ti + 1})`)
+      }
+
       // AI turns — each guest responds
       for (const guest of guests) {
         log(`    Exchange ${ti + 1}/${turns} — generating ${guest.name} response...`)
@@ -501,6 +636,12 @@ async function generateConversation(
           timestamp: aiRes.timestamp || new Date().toISOString(),
         }
         messages.push(aiMsg)
+
+        if (debug) {
+          log(`\n--- ${guest.name} ---`)
+          log(aiRes.content)
+          await waitForEnter(`${guest.name} turn done (subtopic ${si + 1}, exchange ${ti + 1})`)
+        }
       }
     }
   }
@@ -537,17 +678,30 @@ async function generateTitle(baseUrl: string, topic: string): Promise<string> {
 // Phase 6 — Generate description
 // ---------------------------------------------------------------------------
 
+// Matches the SUMMARY_PROMPT used in publish-conversation.tsx
+const SUMMARY_PROMPT = `Summarize the following conversation in a clear, narrative-style summary under 400 words.
+Focus on:
+- The main theme of the conversation
+- The most important ideas or frameworks discussed
+- How the speakers contributed or built on each other's points
+- The overall takeaway or conclusion
+
+Guidelines:
+- Write in paragraph form (no section headers or bullet lists)
+- Keep the tone neutral and explanatory
+- Do not include citations, reference numbers, or HTML
+- Do not restate every example—prioritize meaning over detail
+`
+
 async function generateDescription(
   baseUrl: string,
-  topic: string,
+  _topic: string,
   messages: Message[]
 ): Promise<string> {
   log("Phase 6: Generating description...")
 
-  const transcript = messages
-    .slice(0, 8)
-    .map((m) => `${m.role}: ${m.content}`)
-    .join("\n\n")
+  // Same format as publish-conversation.tsx: "name: message" joined by double newline
+  const conversationText = messages.map((m) => `${m.role}: ${m.content}`).join("\n\n")
 
   const res = await apiFetch<PerplexityResponse>(`${baseUrl}/api/ai/perplexity`, {
     method: "POST",
@@ -555,7 +709,7 @@ async function generateDescription(
       messages: [
         {
           role: "user",
-          content: `Write a 2-3 sentence podcast episode description (SEO-friendly, engaging) for an episode about "${topic}". Here is a snippet of the conversation:\n\n${transcript}\n\nPlain text only, no markdown.`,
+          content: `${SUMMARY_PROMPT}\n\nConversation:\n${conversationText}`,
         },
       ],
     }),
@@ -601,30 +755,59 @@ async function publishEpisode(
     categoryId,
   }
 
-  try {
-    const res = await apiFetch<PublishResponse>(`${baseUrl}/api/addUpdateConversation`, {
+  const doPublish = async (authToken: string, publishBody: typeof body) => {
+    return apiFetch<PublishResponse>(`${baseUrl}/api/addUpdateConversation`, {
       method: "POST",
-      auth: token,
-      body: JSON.stringify(body),
+      auth: authToken,
+      body: JSON.stringify(publishBody),
     })
+  }
+
+  let activeToken = token
+  try {
+    const res = await doPublish(activeToken, body)
     log(`  Published! Credits remaining: ${res.creditsRemaining}`)
     return res
   } catch (err) {
+    if (err instanceof ApiError && err.status === 401) {
+      // Token expired mid-run — auto-refresh or prompt
+      activeToken = await refreshClerkToken(activeToken)
+      const res = await doPublish(activeToken, body)
+      log(`  Published! Credits remaining: ${res.creditsRemaining}`)
+      return res
+    }
     if (err instanceof ApiError && err.status === 409) {
       // Slug collision — append -2 and retry once
       const retrySlug = `${slug.slice(0, 57)}-2`
       log(`  Slug "${slug}" taken, retrying with "${retrySlug}"...`)
       body.slug = retrySlug
-      const res = await apiFetch<PublishResponse>(`${baseUrl}/api/addUpdateConversation`, {
-        method: "POST",
-        auth: token,
-        body: JSON.stringify(body),
-      })
+      const res = await doPublish(activeToken, body)
       log(`  Published! Credits remaining: ${res.creditsRemaining}`)
       return res
     }
     throw err
   }
+}
+
+function promptFreshToken(): Promise<string> {
+  return new Promise((resolve) => {
+    process.stderr.write(
+      "\nToken expired. Paste a fresh token from the browser and press Enter:\n" +
+      "  await window.Clerk?.session?.getToken()\n> "
+    )
+    process.stdin.resume()
+    process.stdin.setEncoding("utf8")
+    let input = ""
+    const onData = (chunk: string) => {
+      input += chunk
+      if (input.includes("\n")) {
+        process.stdin.removeListener("data", onData)
+        process.stdin.pause()
+        resolve(input.trim())
+      }
+    }
+    process.stdin.on("data", onData)
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -633,11 +816,6 @@ async function publishEpisode(
 
 function handlePublishError(err: unknown, baseUrl: string): never {
   if (err instanceof ApiError) {
-    if (err.status === 401) {
-      log(`\nError: Token expired. Get a fresh one from the browser:`)
-      log(`  await window.Clerk?.session?.getToken()`)
-      process.exit(1)
-    }
     if (err.status === 403) {
       const body = err.body as { availableCredits?: number } | undefined
       const credits = body?.availableCredits ?? 0
@@ -663,7 +841,10 @@ function handlePublishError(err: unknown, baseUrl: string): never {
 
 async function main(): Promise<void> {
   const args = parseCliArgs()
-  const hostName = extractHostName(args.token)
+
+  // Bootstrap: get a valid token (from --token or saved session ID)
+  const token = await getInitialToken(args.token)
+  const hostName = extractHostName(token)
 
   log(`\nChatbotCasts Episode Creator`)
   log(`  Topic:    ${args.topic}`)
@@ -671,10 +852,11 @@ async function main(): Promise<void> {
   log(`  Host:     ${hostName}`)
   log(`  Turns:    ${args.turns}`)
   log(`  Base URL: ${args.baseUrl}`)
+  if (args.debug) log(`  Debug:    ON — press Enter after each message`)
   log("")
 
   // Phase 1
-  const { personas, categories } = await fetchPersonasAndCategories(args.baseUrl, args.token)
+  const { personas, categories } = await fetchPersonasAndCategories(args.baseUrl, token)
 
   // Phase 2
   const guests = matchPersonas(personas, args.guests)
@@ -686,12 +868,13 @@ async function main(): Promise<void> {
   // Phase 4
   const messages = await generateConversation(
     args.baseUrl,
-    args.token,
+    token,
     hostName,
     args.topic,
     subtopics,
     guests,
-    args.turns
+    args.turns,
+    args.debug
   )
 
   // Phase 5
@@ -700,12 +883,15 @@ async function main(): Promise<void> {
   // Phase 6
   const description = await generateDescription(args.baseUrl, args.topic, messages)
 
-  // Phase 7
+  // Phase 7 — always refresh before publishing (initial token will have expired during generation)
+  log("Phase 7: Refreshing token before publish...")
+  const publishToken = await refreshClerkToken(token)
+
   let result: PublishResponse
   try {
     result = await publishEpisode(
       args.baseUrl,
-      args.token,
+      publishToken,
       title,
       description,
       args.topic,
