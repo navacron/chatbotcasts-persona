@@ -679,19 +679,7 @@ async function generateTitle(baseUrl: string, topic: string): Promise<string> {
 // ---------------------------------------------------------------------------
 
 // Matches the SUMMARY_PROMPT used in publish-conversation.tsx
-const SUMMARY_PROMPT = `Summarize the following conversation in a clear, narrative-style summary under 400 words.
-Focus on:
-- The main theme of the conversation
-- The most important ideas or frameworks discussed
-- How the speakers contributed or built on each other's points
-- The overall takeaway or conclusion
-
-Guidelines:
-- Write in paragraph form (no section headers or bullet lists)
-- Keep the tone neutral and explanatory
-- Do not include citations, reference numbers, or HTML
-- Do not restate every example—prioritize meaning over detail
-`
+const SUMMARY_PROMPT = `Write a 2–3 sentence episode summary that helps a potential listener quickly decide if this episode is for them. Focus on the core topic and the key question or insight explored — not what each speaker said. Keep it punchy and engaging, like a podcast blurb. Plain text only, no bullet points or HTML.`
 
 async function generateDescription(
   baseUrl: string,
