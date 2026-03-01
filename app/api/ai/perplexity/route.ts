@@ -7,24 +7,42 @@ export const maxDuration = 30
 
 export async function POST(req: Request) {
   try {
-    const { userId } = await auth()
+    const authResult = await auth()
+    const { userId } = authResult
+
     if (!userId) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 })
+      const hasSession = "sessionId" in authResult && !!authResult.sessionId
+      const reason = !hasSession
+        ? "No session (user not logged in or session expired)"
+        : "Clerk auth returned no userId"
+      console.error("[perplexity] 401 Unauthorized:", {
+        reason,
+        hasSessionId: hasSession,
+        path: "/api/ai/perplexity",
+      })
+      return Response.json(
+        {
+          error: "Unauthorized",
+          details: "You must be signed in to use this feature. Please sign in and try again.",
+          reason,
+        },
+        { status: 401 },
+      )
     }
 
     const body = await req.json()
-    console.log("[v0] Received body:", JSON.stringify(body, null, 2))
+    console.log("[perplexity] Request from userId:", userId?.slice(0, 12) + "...")
 
     const messages = body.messages
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
-      console.error("[v0] Invalid messages:", messages)
+      console.error("[perplexity] 400 Bad request: invalid messages", { messageCount: messages?.length })
       return Response.json({ error: "Messages must be a non-empty array" }, { status: 400 })
     }
 
     const apiKey = process.env.PERPLEXITY_API_KEY
     if (!apiKey?.trim()) {
-      console.error("[v0] PERPLEXITY_API_KEY is not set")
+      console.error("[perplexity] 503: PERPLEXITY_API_KEY is not set")
       return Response.json(
         { error: "Perplexity API key not configured", details: "Set PERPLEXITY_API_KEY in .env.local" },
         { status: 503 },
@@ -38,9 +56,7 @@ export async function POST(req: Request) {
       content: msg.content,
     }))
 
-    console.log("[v0] Perplexity Request:")
-    console.log("[v0] - Message count:", coreMessages.length)
-    console.log("[v0] - Core messages:", JSON.stringify(coreMessages, null, 2))
+    console.log("[perplexity] Calling Perplexity API, message count:", coreMessages.length)
 
     const result = await generateText({
       model: perplexity("sonar"),
@@ -49,10 +65,7 @@ export async function POST(req: Request) {
       temperature: 0.7,
     })
 
-    console.log("[v0] Perplexity Response:")
-    console.log("[v0] - Text length:", result.text.length)
-    console.log("[v0] - Response:", result.text)
-    console.log("[v0] - Full result object:", JSON.stringify(result, null, 2))
+    console.log("[perplexity] Success, text length:", result.text.length)
 
     const responseBody = (result.response as any)?.body
     const fullContent = responseBody?.choices?.[0]?.message?.content || result.text
@@ -61,8 +74,7 @@ export async function POST(req: Request) {
     // Strip markdown formatting (bold, italics, links, etc.) but keep plain-text citations like [1], [2]
     const cleanedText = stripMarkdown(fullContent)
 
-    console.log("[v0] - Full content with citations:", fullContent)
-    console.log("[v0] - Citations:", citations)
+    console.log("[perplexity] Citations count:", citations?.length ?? 0)
 
     return Response.json({
       text: cleanedText,
@@ -71,11 +83,13 @@ export async function POST(req: Request) {
       finishReason: result.finishReason,
     })
   } catch (error) {
-    console.error("[v0] Perplexity API error:", error)
+    const message = error instanceof Error ? error.message : "Unknown error"
+    const stack = error instanceof Error ? error.stack : undefined
+    console.error("[perplexity] 500 Error:", message, stack ? "\n" + stack : "")
     return Response.json(
       {
         error: "Failed to generate response",
-        details: error instanceof Error ? error.message : "Unknown error",
+        details: message,
       },
       { status: 500 },
     )
