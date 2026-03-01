@@ -10,7 +10,7 @@ export CLERK_SECRET_KEY_PROD
 # After that, --token is not needed — session is saved in .clerk-session.
 
 npx tsx commands/create-episode.ts \
-  --topic "Chinas Humanoid Robots" \
+  --topic "Book Review Beyond Beyond Entrepreneurship 2.0" \
   --guests "Sab Guru" \
   --base-url https://www.chatbotcasts.com
 

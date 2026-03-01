@@ -481,7 +481,7 @@ function detectCategory(topic: string, categories: Category[]): Category {
 // Phase 3 — Generate plan
 // ---------------------------------------------------------------------------
 
-async function generatePlan(baseUrl: string, topic: string): Promise<string[]> {
+async function generatePlan(baseUrl: string, topic: string): Promise<{ planText: string; subtopics: string[] }> {
   log("Phase 3: Generating discussion plan...")
 
   const res = await apiFetch<PlanResponse>(`${baseUrl}/api/generatePlan`, {
@@ -492,7 +492,7 @@ async function generatePlan(baseUrl: string, topic: string): Promise<string[]> {
   const subtopics = parsePlan(res.plan)
   if (res.fallback) log(`  Note: used fallback plan`)
   log(`  Generated ${subtopics.length} subtopics`)
-  return subtopics
+  return { planText: res.plan, subtopics }
 }
 
 function parsePlan(planText: string): string[] {
@@ -511,6 +511,7 @@ function parsePlan(planText: string): string[] {
 
 async function generateHumanTurn(
   baseUrl: string,
+  token: string,
   hostName: string,
   topic: string,
   subtopic: string,
@@ -534,6 +535,7 @@ async function generateHumanTurn(
 
   const res = await apiFetch<PerplexityResponse>(`${baseUrl}/api/ai/perplexity`, {
     method: "POST",
+    auth: token,
     body: JSON.stringify({
       messages: [
         { role: "system", content: systemPrompt },
@@ -591,6 +593,7 @@ async function generateConversation(
       log(`    Exchange ${ti + 1}/${turns} — generating host question...`)
       const humanContent = await generateHumanTurn(
         baseUrl,
+        token,
         hostName,
         topic,
         subtopic,
@@ -654,11 +657,12 @@ async function generateConversation(
 // Phase 5 — Generate title
 // ---------------------------------------------------------------------------
 
-async function generateTitle(baseUrl: string, topic: string): Promise<string> {
+async function generateTitle(baseUrl: string, token: string, topic: string): Promise<string> {
   log("Phase 5: Generating title...")
 
   const res = await apiFetch<PerplexityResponse>(`${baseUrl}/api/ai/perplexity`, {
     method: "POST",
+    auth: token,
     body: JSON.stringify({
       messages: [
         {
@@ -683,6 +687,7 @@ const SUMMARY_PROMPT = `In 2-3 sentences, summarize what this episode is about s
 
 async function generateDescription(
   baseUrl: string,
+  token: string,
   _topic: string,
   messages: Message[]
 ): Promise<string> {
@@ -693,6 +698,7 @@ async function generateDescription(
 
   const res = await apiFetch<PerplexityResponse>(`${baseUrl}/api/ai/perplexity`, {
     method: "POST",
+    auth: token,
     body: JSON.stringify({
       messages: [
         {
@@ -719,7 +725,8 @@ async function publishEpisode(
   description: string,
   topic: string,
   messages: Message[],
-  plan: string[],
+  planText: string,
+  turns: number,
   personaIds: string[],
   categoryId: string,
   slugOverride: string | undefined
@@ -732,11 +739,27 @@ async function publishEpisode(
     log(`  Warning: slug was invalid, regenerated: ${slug}`)
   }
 
+  // Match the dataToSave structure from publish-conversation.tsx exactly
+  const dataToSave = {
+    title,
+    content: description,
+    slug,
+    allPersonaIds: personaIds,
+    currentPersonaId: personaIds.find((id) => id !== "human") ?? personaIds[0] ?? null,
+    messages,
+    plan: {
+      text: planText,
+      focusedLineIndex: 0,
+      messagesPerTopic: turns,
+      isTopicLocked: false,
+    },
+  }
+
   const body = {
     title,
     description,
     topic,
-    data: { messages, title, plan: plan.join("\n") },
+    data: dataToSave,
     isPublic: true,
     slug,
     personaIds,
@@ -851,7 +874,7 @@ async function main(): Promise<void> {
   const category = detectCategory(args.topic, categories)
 
   // Phase 3
-  const subtopics = await generatePlan(args.baseUrl, args.topic)
+  const { planText, subtopics } = await generatePlan(args.baseUrl, args.topic)
 
   // Phase 4
   const messages = await generateConversation(
@@ -866,10 +889,10 @@ async function main(): Promise<void> {
   )
 
   // Phase 5
-  const title = args.title || (await generateTitle(args.baseUrl, args.topic))
+  const title = args.title || (await generateTitle(args.baseUrl, token, args.topic))
 
   // Phase 6
-  const description = await generateDescription(args.baseUrl, args.topic, messages)
+  const description = await generateDescription(args.baseUrl, token, args.topic, messages)
 
   // Phase 7 — always refresh before publishing (initial token will have expired during generation)
   log("Phase 7: Refreshing token before publish...")
@@ -884,7 +907,8 @@ async function main(): Promise<void> {
       description,
       args.topic,
       messages,
-      subtopics,
+      planText,
+      args.turns,
       ["human", ...guests.map((g) => g.id)],
       category.id,
       args.slug

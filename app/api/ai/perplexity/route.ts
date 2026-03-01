@@ -1,11 +1,17 @@
 import { generateText } from "ai"
 import { createPerplexity } from "@ai-sdk/perplexity"
 import { stripMarkdown } from "@/lib/markdown-utils"
+import { auth } from "@clerk/nextjs/server"
 
 export const maxDuration = 30
 
 export async function POST(req: Request) {
   try {
+    const { userId } = await auth()
+    if (!userId) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
     const body = await req.json()
     console.log("[v0] Received body:", JSON.stringify(body, null, 2))
 
