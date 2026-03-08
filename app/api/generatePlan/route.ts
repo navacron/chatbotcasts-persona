@@ -34,8 +34,9 @@ Requirements:
 - Number each subtopic (1., 2., 3., etc.)
 - Keep subtopics concise (5-10 words each)
 - Progress logically from introduction to deeper topics
-- End with a forward-looking or reflective topic
 - Use natural, conversational language
+- The second-to-last subtopic should reflect on key takeaways and what listeners can act on
+- The final subtopic should close the conversation naturally — summarise the discussion, acknowledge open questions, and suggest whether this topic deserves a future episode
 
 Formatting:
 - Plain text only
