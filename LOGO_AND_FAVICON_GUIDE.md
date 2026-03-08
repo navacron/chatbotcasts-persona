@@ -9,10 +9,12 @@
   - `chatbotcastssm.webp` (WebP version)
 
 - **Favicon files**: Located in `/public/`
-  - `icon-light-32x32.png` (Light mode)
-  - `icon-dark-32x32.png` (Dark mode)
-  - `icon.svg` (SVG version)
-  - `apple-icon.png` (Apple touch icon)
+  - `favicon.ico` (legacy, 48x48)
+  - `favicon.svg` (SVG version, scalable)
+  - `favicon-96x96.png` (PNG fallback)
+  - `apple-touch-icon.png` (180x180, iOS)
+  - `web-app-manifest-192x192.png` (PWA)
+  - `web-app-manifest-512x512.png` (PWA)
 
 - **Website theme colors**:
   - Primary: Purple (`oklch(0.5 0.3 280)`)
@@ -77,11 +79,11 @@ convert ChatBotCastsLg.png -fuzz 20% -fill "#FF6B6B" -opaque "#00BFFF" ChatBotCa
 3. **Create favicon files**:
 
    **For PNG favicons:**
-   - Light mode: Use logo on white/light background → `icon-light-32x32.png`
-   - Dark mode: Use logo on dark background → `icon-dark-32x32.png`
-   - Apple icon: 180x180px → `apple-icon.png`
+   - Standard: 96x96px → `favicon-96x96.png`
+   - Apple icon: 180x180px → `apple-touch-icon.png`
+   - PWA: 192x192px → `web-app-manifest-192x192.png`, 512x512px → `web-app-manifest-512x512.png`
 
-   **For SVG favicon** (already exists at `/public/icon.svg`):
+   **For SVG favicon** (at `/public/favicon.svg`):
    - Can be updated to include robot logo if desired
    - SVG is scalable and works in all browsers
 
@@ -93,30 +95,16 @@ convert ChatBotCastsLg.png -fuzz 20% -fill "#FF6B6B" -opaque "#00BFFF" ChatBotCa
 
 ### Method 2: Manual Creation
 
-1. **Create 32x32px version** of your logo
-2. **Save as**:
-   - `icon-light-32x32.png` (for light mode)
-   - `icon-dark-32x32.png` (for dark mode)
-3. **Create Apple icon**:
-   - Resize to 180x180px
-   - Save as `apple-icon.png`
+1. **Create favicon.ico** (48x48 or multi-size .ico)
+2. **Create PNG versions**:
+   - `favicon-96x96.png`
+   - `apple-touch-icon.png` (180x180px)
+   - `web-app-manifest-192x192.png`, `web-app-manifest-512x512.png` (for PWA)
+3. **Optional**: `favicon.svg` for modern browsers
 
 ### Method 3: Using Next.js Metadata (Already Configured)
 
-The favicon is already configured in `app/layout.tsx`:
-
-```typescript
-icons: {
-  icon: [
-    { url: "/icon-light-32x32.png", media: "(prefers-color-scheme: light)" },
-    { url: "/icon-dark-32x32.png", media: "(prefers-color-scheme: dark)" },
-    { url: "/icon.svg", type: "image/svg+xml" },
-  ],
-  apple: "/apple-icon.png",
-}
-```
-
-Just replace the files in `/public/` and they'll be used automatically.
+The favicon is configured in `app/layout.tsx` and `public/site.webmanifest`. Replace the files in `/public/` and they'll be used automatically.
 
 ## Quick Reference: Light Red Color Codes
 
