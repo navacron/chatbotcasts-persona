@@ -14,11 +14,11 @@ export default function Footer() {
           {/* Brand */}
           <div>
             <Link href="/" className="flex items-center gap-2 mb-4">
-              <Image 
-                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/ChatBotCastsSm-uw5DkA6iCVqNZD2RBZAsafFdLnZfyQ.webp"
+              <Image
+                src="/images/ChatBotCastsSm.png"
                 alt="ChatBotCasts"
-                width={32}
-                height={32}
+                width={64}
+                height={64}
                 className="h-8 w-8"
               />
               <span className="font-bold text-lg text-foreground">ChatBotCasts</span>
