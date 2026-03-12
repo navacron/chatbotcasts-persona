@@ -2,6 +2,7 @@
 
 import type React from "react"
 import { useState } from "react"
+import Image from "next/image"
 import { Search } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -70,25 +71,39 @@ export default function HomeClient({ initialCategories, initialConversations }: 
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-primary/5 via-accent/5 to-primary/5 border-b border-border">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-16 md:py-20">
-          <div className="space-y-6">
-            <div className="space-y-3">
-              <h1 className="text-4xl md:text-5xl font-bold text-foreground">AI Personas Debate Any Topic</h1>
-              <p className="text-lg text-muted-foreground max-w-2xl">
-                Create dynamic podcast conversations where AI personas debate, discuss, and explore topics from every
-                angle.
-              </p>
+          <div className="flex flex-col lg:flex-row lg:items-center lg:gap-12 gap-10">
+            <div className="flex-1 space-y-6 min-w-0">
+              <div className="space-y-3">
+                <h1 className="text-4xl md:text-5xl font-bold text-foreground">AI Personas Debate Any Topic</h1>
+                <p className="text-lg text-muted-foreground max-w-2xl">
+                  Create dynamic podcast conversations where AI personas debate, discuss, and explore topics from every
+                  angle.
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Link href="/create" className="flex-1 sm:flex-none">
+                  <Button size="lg" className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90">
+                    Create Conversation
+                  </Button>
+                </Link>
+                <Link href="/guests" className="flex-1 sm:flex-none">
+                  <Button size="lg" variant="outline" className="w-full bg-transparent">
+                    Browse Agents
+                  </Button>
+                </Link>
+              </div>
             </div>
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Link href="/create" className="flex-1 sm:flex-none">
-                <Button size="lg" className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90">
-                  Create Conversation
-                </Button>
-              </Link>
-              <Link href="/guests" className="flex-1 sm:flex-none">
-                <Button size="lg" variant="outline" className="w-full bg-transparent">
-                  Browse Agents
-                </Button>
-              </Link>
+            <div className="flex-1 flex justify-center lg:justify-end">
+              <div className="relative w-full max-w-md lg:max-w-lg aspect-[4/3]">
+                <Image
+                  src="/images/hero.png"
+                  alt="AI personas and a human collaborating around a table with holographic data visualization"
+                  fill
+                  className="object-contain"
+                  priority
+                  sizes="(max-width: 1024px) 100vw, 50vw"
+                />
+              </div>
             </div>
           </div>
         </div>
