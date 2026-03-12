@@ -111,6 +111,7 @@ async function getCategory(slug: string) {
         author: username,
         createdAt: conv.created_at,
         categoryId: conv.category_id,
+        categorySlug: category.slug,
         featureImage: conv.feature_image,
       }
     })

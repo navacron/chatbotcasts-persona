@@ -62,6 +62,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ conversations: [] })
     }
 
+    // Fetch category slugs for gradient covers
+    const categoryIds = [...new Set((conversationsData as { category_id?: string }[]).map((c) => c.category_id).filter(Boolean))]
+    const categorySlugMap = new Map<string, string>()
+    if (categoryIds.length > 0) {
+      const { data: categories } = await supabase
+        .from("category")
+        .select("id, slug")
+        .in("id", categoryIds)
+      categories?.forEach((cat: { id: string; slug: string }) => {
+        categorySlugMap.set(cat.id, cat.slug)
+      })
+    }
+
     // Fetch personas and human users for all conversations in a single query
     const conversationIds = conversationsData.map((c) => c.id)
     const { data: allPersonaLinks, error: personaError } = await supabase
@@ -148,6 +161,7 @@ export async function GET(request: NextRequest) {
         author: username,
         createdAt: conv.created_at,
         categoryId: conv.category_id,
+        categorySlug: conv.category_id ? categorySlugMap.get(conv.category_id) ?? null : null,
         featureImage: conv.feature_image,
         versionCount: group.length,
       }

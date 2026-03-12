@@ -123,6 +123,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ slu
         author: username,
         createdAt: conv.created_at,
         categoryId: conv.category_id,
+        categorySlug: category.slug,
         featureImage: conv.feature_image,
         versionCount: group.length,
       }

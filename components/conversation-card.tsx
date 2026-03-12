@@ -2,6 +2,7 @@ import { Eye, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import Image from "next/image"
+import GradientCover from "@/components/gradient-cover"
 
 interface ConversationCardProps {
   conversation: {
@@ -13,6 +14,7 @@ interface ConversationCardProps {
     views: number
     author: string
     featureImage?: string | null
+    categorySlug?: string | null
     versionCount?: number
     versions?: { slug: string; version: number }[]
   }
@@ -26,17 +28,23 @@ export default function ConversationCard({ conversation }: ConversationCardProps
   return (
     <div className="bg-white border border-border rounded-lg overflow-hidden hover:shadow-lg transition-shadow h-full flex flex-col">
       <Link href={`/posts/${conversation.slug}`} className="block flex-1">
-        {conversation.featureImage && (
-          <div className="relative w-full h-48 bg-muted">
+        <div className="relative w-full h-48 bg-muted shrink-0">
+          {conversation.featureImage ? (
             <Image
-              src={conversation.featureImage || "/placeholder.svg"}
+              src={conversation.featureImage}
               alt={conversation.title}
               fill
               className="object-cover"
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             />
-          </div>
-        )}
+          ) : (
+            <GradientCover
+              title={conversation.title}
+              categorySlug={conversation.categorySlug}
+              className="h-full w-full"
+            />
+          )}
+        </div>
 
         {/* Card Content */}
         <div className="p-6 space-y-4">

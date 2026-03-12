@@ -55,6 +55,7 @@ export async function GET(request: NextRequest) {
         slug,
         view_count,
         feature_image,
+        category_id,
         root_conversation_id,
         version,
         users!conversations_user_id_fkey (
@@ -81,6 +82,19 @@ export async function GET(request: NextRequest) {
     }
 
     const rootIds = Array.from(byRoot.keys())
+
+    // Fetch category slugs for gradient covers
+    const categoryIds = [...new Set((conversations ?? []).map((c: { category_id?: string }) => c.category_id).filter(Boolean))]
+    const categorySlugMap = new Map<string, string>()
+    if (categoryIds.length > 0) {
+      const { data: categories } = await supabase
+        .from("category")
+        .select("id, slug")
+        .in("id", categoryIds)
+      categories?.forEach((cat: { id: string; slug: string }) => {
+        categorySlugMap.set(cat.id, cat.slug)
+      })
+    }
 
     // Fetch root rows for display (title, description, author, etc.)
     const { data: rootRows, error: rootError } = await supabase
@@ -185,6 +199,7 @@ export async function GET(request: NextRequest) {
         featureImage: best.feature_image,
         author: extractUsernameFromEmail((best as any).users?.email),
       }
+      const categoryId = (best as { category_id?: string }).category_id
       conversationsWithData.push({
         id: best.id,
         rootId,
@@ -195,6 +210,7 @@ export async function GET(request: NextRequest) {
         views: best.view_count ?? 0,
         author: meta.author ?? "",
         featureImage: meta.featureImage ?? best.feature_image,
+        categorySlug: categoryId ? categorySlugMap.get(categoryId) ?? null : null,
         similarity,
         versions: versionsByRoot.get(rootId) ?? [{ slug: best.slug, version: best.version ?? 1 }],
       })

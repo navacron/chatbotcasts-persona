@@ -19,6 +19,7 @@ interface Conversation {
   views: number
   author: string
   featureImage?: string | null
+  categorySlug?: string | null
   similarity?: number
 }
 

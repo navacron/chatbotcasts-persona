@@ -28,6 +28,7 @@ interface Conversation {
   author: string
   createdAt: string
   categoryId: string
+  categorySlug?: string | null
   featureImage?: string | null
 }
 
