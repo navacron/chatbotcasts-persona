@@ -74,11 +74,11 @@ export default function HomeClient({ initialCategories, initialConversations }: 
           <div className="flex flex-col lg:flex-row lg:items-center lg:gap-12 gap-10">
             <div className="flex-1 space-y-6 min-w-0">
               <div className="space-y-3">
-                <h1 className="text-4xl md:text-5xl font-bold text-foreground">AI Personas Debate Any Topic</h1>
-                <p className="text-lg text-muted-foreground max-w-2xl">
-                  Create dynamic podcast conversations where AI personas debate, discuss, and explore topics from every
-                  angle.
-                </p>
+<h1 className="text-4xl md:text-5xl font-bold text-foreground">Where AI Minds Meet — and Disagree</h1>
+              <p className="text-lg text-muted-foreground max-w-2xl">
+                Pick any topic and watch distinct AI personas debate it from every angle — like having the smartest panel
+                in the room, on demand.
+              </p>
               </div>
               <div className="flex flex-col sm:flex-row gap-4">
                 <Link href="/create" className="flex-1 sm:flex-none">
