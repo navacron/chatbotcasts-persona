@@ -1,8 +1,15 @@
+import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { auth } from "@clerk/nextjs/server"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
 import { getConversationBySlug } from "@/lib/conversations"
+
+export const metadata: Metadata = {
+  title: "Edit Conversation | ChatBotCasts",
+  description: "Edit your ChatBotCasts conversation.",
+  robots: { index: false, follow: false },
+}
 import { createClient } from "@/lib/supabase/server"
 import EditPostClient from "@/components/edit-post-client"
 
