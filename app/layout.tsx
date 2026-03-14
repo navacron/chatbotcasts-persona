@@ -30,8 +30,7 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "48x48" },
-      { url: "/favicon.ico", sizes: "any" },
-      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon.svg", type: "image/svg+xml", sizes: "any" },
       { url: "/favicon-96x96.png", sizes: "96x96", type: "image/png" },
     ],
     shortcut: [{ url: "/favicon.ico" }],
