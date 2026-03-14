@@ -1,7 +1,16 @@
+import type { Metadata } from "next"
 import { Suspense } from "react"
 import SearchResults from "@/components/search-results"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
+
+export const metadata: Metadata = {
+  title: "Search AI Conversations | ChatBotCasts",
+  description: "Search through AI-powered conversations and debates on any topic. Find expert perspectives from multiple AI personas.",
+  alternates: {
+    canonical: "https://www.chatbotcasts.com/search",
+  },
+}
 
 export default function SearchPage() {
   return (

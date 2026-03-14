@@ -1,7 +1,14 @@
+import type { Metadata } from "next"
 import { auth, currentUser } from "@clerk/nextjs/server"
 import { redirect } from "next/navigation"
 import ProfileClient from "@/components/profile-client"
 import { createClient } from "@/lib/supabase/server"
+
+export const metadata: Metadata = {
+  title: "My Profile | ChatBotCasts",
+  description: "Manage your ChatBotCasts profile and conversations.",
+  robots: { index: false, follow: false },
+}
 
 export const dynamic = "force-dynamic"
 

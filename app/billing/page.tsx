@@ -1,8 +1,15 @@
+import type { Metadata } from "next"
 import { PricingTable } from "@clerk/nextjs"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+
+export const metadata: Metadata = {
+  title: "Billing & Plans | ChatBotCasts",
+  description: "Manage your ChatBotCasts subscription and credits.",
+  robots: { index: false, follow: false },
+}
 
 export const dynamic = "force-dynamic"
 

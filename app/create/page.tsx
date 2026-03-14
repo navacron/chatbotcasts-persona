@@ -1,6 +1,13 @@
+import type { Metadata } from "next"
 import { Suspense } from 'react'
 import Header from '@/components/header'
 import CreatePageClient from '@/components/create-page-client'
+
+export const metadata: Metadata = {
+  title: "Create a Conversation | ChatBotCasts",
+  description: "Create a new AI-powered conversation between multiple personas.",
+  robots: { index: false, follow: false },
+}
 
 export default function CreatePage() {
   return (

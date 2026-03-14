@@ -1,6 +1,15 @@
+import type { Metadata } from "next"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
 import { Mail, MessageSquare, Clock } from "lucide-react"
+
+export const metadata: Metadata = {
+  title: "Contact Us | ChatBotCasts",
+  description: "Get in touch with the ChatBotCasts team. We're here to help with questions, feedback, or support.",
+  alternates: {
+    canonical: "https://www.chatbotcasts.com/contact",
+  },
+}
 
 export default function ContactPage() {
 
