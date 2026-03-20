@@ -28,7 +28,7 @@ export default function ConversationCard({ conversation }: ConversationCardProps
   return (
     <div className="bg-white border border-border rounded-lg overflow-hidden hover:shadow-lg transition-shadow h-full flex flex-col">
       <Link href={`/posts/${conversation.slug}`} className="block flex-1">
-        <div className="relative w-full h-48 bg-muted shrink-0">
+        <div className="relative w-full h-28 sm:h-32 bg-muted shrink-0">
           {conversation.featureImage ? (
             <Image
               src={conversation.featureImage}
