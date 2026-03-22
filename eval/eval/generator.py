@@ -35,6 +35,7 @@ class PromptConfig:
     output_instruction: str
     description: str = ""
     novelty_rule: Optional[str] = None
+    voice_rules: Optional[str] = None
     include_subtopic_prefix: bool = True
     include_conversation_history: bool = True
 
@@ -89,6 +90,12 @@ def build_user_prompt(
     # 4. Novelty rule (v2+ only)
     if config.novelty_rule:
         parts.append(f"Novelty rule:\n{config.novelty_rule.rstrip()}")
+
+    # 4b. Voice rules (v3+ only)
+    if config.voice_rules:
+        # Interpolate persona name into voice_rules if placeholder present
+        voice = config.voice_rules.format(persona_name=persona.name) if "{persona_name}" in config.voice_rules else config.voice_rules
+        parts.append(f"Voice rules:\n{voice.rstrip()}")
 
     # 5. Conversation context
     if config.include_conversation_history and messages:

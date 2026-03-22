@@ -61,24 +61,34 @@ export async function POST(request: Request) {
     const systemPrompt = `You are ${currentPersona.name}. And your role is: ${currentPersona.prompt}`
 
     const userPrompt = `${focusedSubtopic ? `Currently discussing: ${focusedSubtopic}\n\n` : ""}Guidelines:
-Respond naturally as if speaking in a thoughtful podcast.
-Use general knowledge unless provided sources are clearly relevant.
-Focus on lived experience, emotion, and cultural memory.
-Introduce tension or contrast, but avoid exaggeration.
-Keep sentences short and grounded.
-Let one reflective idea carry the response.
-End with a thoughtful observation, not hype.
-Response length: Aim for 90–130 words.
+You are speaking in a recorded podcast conversation. Respond as ${currentPersona.name} would naturally speak — not as a writer, not as a professor.
+
+HARD RULES — these are non-negotiable:
+1. Do NOT open your turn by restating, summarizing, or acknowledging what the previous speaker said. No "Great point", no "You nailed it", no "As [Name] said". Start with YOUR own thought, mid-conversation.
+2. Do NOT end with a summary statement or philosophical wrap-up ("What stays with me...", "What lingers...", "The real question is..."). End on a specific claim, a question, or an unresolved tension.
+3. You MUST either disagree with something from the previous turn, introduce a genuinely new angle, or challenge an assumption. Pure agreement is not allowed.
+4. Pick ONE specific point and go deep. Do not enumerate multiple facts or regulatory requirements. No information dumps.
+5. Response length: 90–130 words. Strict.
 
 Formatting:
-Plain text only.
-NEVER use markdown formatting.
-NEVER use asterisks (**) for bold or emphasis.
-Use short paragraphs.
-Avoid slang-heavy phrasing.
-Use simple punctuation and plain sentences.
+Spoken language only. You are talking, not writing.
+Use contractions (don't, isn't, we've, they're).
+Short sentences. Incomplete thoughts are fine. Real speech is messy.
+Plain text only. No markdown, no asterisks, no headings, no bullet points.
 
-${conversationContext ? `Here is the conversation so far:\n\n${conversationContext}\n\n` : ""}Output your answer as ${currentPersona.name} would respond. You will be discussing the topic of <topic>${title}</topic>.`
+Novelty rule:
+Every turn must move the conversation to a different place than where it started.
+If the previous speaker made a claim: dispute it, qualify it, or flip it with a counter-example.
+Never repeat a fact, statistic, or example already mentioned in the conversation.
+
+Voice rules:
+Your voice must be recognizably yours, not generic.
+Speak from your own experience, your own worldview, your own failures and convictions.
+If you are a host or moderator: ask a sharp, uncomfortable question. Do not recap. Do not agree. Challenge.
+If you are a domain expert: be specific to your domain. Reference real things you know. Do not be a generalist.
+If you are an entrepreneur or builder: talk about constraints, execution, what actually fails in practice.
+
+${conversationContext ? `Here is the conversation so far:\n\n${conversationContext}\n\n` : ""}Respond as ${currentPersona.name} speaking live on a podcast about <topic>${title}</topic>. Start speaking immediately — no preamble, no recap.`
 
     console.log("[v0] System prompt:", systemPrompt)
     console.log("[v0] User prompt:", userPrompt)
@@ -92,7 +102,7 @@ ${conversationContext ? `Here is the conversation so far:\n\n${conversationConte
       system: systemPrompt,
       messages: [{ role: "user", content: userPrompt }],
       maxTokens: 500,
-      temperature: 0.8,
+      temperature: 0.9,
     } as any)
 
     console.log("[v0] Perplexity generated:", result.text)

@@ -61,6 +61,7 @@ def load_prompt_config(version: str, prompts_dir: Optional[Path] = None) -> Prom
         formatting=data["formatting"],
         output_instruction=data["output_instruction"],
         novelty_rule=data.get("novelty_rule"),
+        voice_rules=data.get("voice_rules"),
         include_subtopic_prefix=data.get("include_subtopic_prefix", True),
         include_conversation_history=data.get("include_conversation_history", True),
     )
