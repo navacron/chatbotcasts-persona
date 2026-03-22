@@ -112,6 +112,18 @@ def run_single_eval(plan_id: str, prompt_version: str, args: argparse.Namespace)
         except Exception as e:
             console.print(f"[yellow]LLM judge skipped: {e}[/yellow]")
 
+    # Subtopic compliance (runs whenever --judge is set, uses Haiku for cost efficiency)
+    compliance_metrics = {}
+    if args.judge:
+        console.print("\n[cyan]Running subtopic compliance scoring...[/cyan]")
+        try:
+            compliance_metrics = _run_subtopic_compliance(messages, args)
+            rate = compliance_metrics.get("compliance_rate")
+            mean = compliance_metrics.get("mean_score")
+            console.print(f"  Mean score: {mean}/10 | Compliance rate (≥7): {rate:.0%}" if rate is not None else "  Done")
+        except Exception as e:
+            console.print(f"[yellow]Subtopic compliance skipped: {e}[/yellow]")
+
     # Build result
     persona_ids = [pid for pid in plan["persona_ids"] if pid != "human" and pid in personas_dict]
     run_id = f"{datetime.now(timezone.utc).isoformat()}_{prompt_version}_{plan_id}"
@@ -128,6 +140,7 @@ def run_single_eval(plan_id: str, prompt_version: str, args: argparse.Namespace)
             "reference_based": rb_metrics or None,
             "reference_free": rf_metrics,
             "llm_judge": judge_metrics or None,
+            "subtopic_compliance": compliance_metrics or None,
         },
         "generation_metadata": {
             "model": config.model,
@@ -214,6 +227,16 @@ def _run_llm_judge(messages: list, personas_dict: dict, plan: dict, args: argpar
         plan=plan,
         anthropic_api_key=anthropic_key,
         num_runs=args.judge_runs,
+    )
+
+
+def _run_subtopic_compliance(messages: list, args: argparse.Namespace) -> dict:
+    from eval.metrics.llm_judge import compute_subtopic_compliance
+
+    anthropic_key = get_api_key("ANTHROPIC_API_KEY")
+    return compute_subtopic_compliance(
+        messages=messages,
+        anthropic_api_key=anthropic_key,
     )
 
 

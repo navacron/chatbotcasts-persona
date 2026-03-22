@@ -165,6 +165,7 @@ def generate_turn(
         role=persona.name,
         content=cleaned,
         timestamp=datetime.now(timezone.utc).isoformat(),
+        subtopic=focused_subtopic,
     )
 
 

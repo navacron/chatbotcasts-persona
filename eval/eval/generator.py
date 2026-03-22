@@ -21,6 +21,7 @@ class Message:
     role: str       # persona name used as role label (mirrors TypeScript msg.role)
     content: str
     timestamp: str
+    subtopic: Optional[str] = None  # the subtopic this turn was generated for
 
 
 @dataclass

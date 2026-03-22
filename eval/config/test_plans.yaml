@@ -36,6 +36,24 @@ test_plans:
       - "6. What companies owe workers during transitions"
       - "7. Takeaways and what individuals can do now"
 
+  - id: "aws-gen-ai-cert"
+    title: "How to Prepare for AWS Certified Generative AI Developer (AIP-C01)"
+    description: "A practical guide to understanding and passing the AWS Certified Generative AI Specialty exam."
+    persona_ids:
+      - "f6a7b8c9-d0e1-4f2a-3b4c-5d6e7f8a9b0c"   # ChatBotCast Host
+      - "bff23be1-5e26-4624-867d-a079ef97c17c"   # Sab Guru
+    turns_per_subtopic: 2
+    reference_youtube_url: null
+    plan:
+      - "1. What the AIP-C01 exam actually tests and who it's designed for"
+      - "2. The core AWS services you must know: Bedrock, SageMaker, and Kendra"
+      - "3. Understanding foundation models, RAG, and prompt engineering on AWS"
+      - "4. Responsible AI and security concepts AWS expects you to know"
+      - "5. The study resources that actually work vs. ones to skip"
+      - "6. How to approach the practice exams and what the question style is like"
+      - "7. Common mistakes people make and how to avoid them"
+      - "8. Final week strategy and what to do the day before the exam"
+
   - id: "climate-tech-reality"
     title: "Climate Tech: Breakthrough or Hype Cycle?"
     description: "Separating genuine climate solutions from over-funded promises."

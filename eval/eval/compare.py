@@ -27,6 +27,9 @@ METRIC_DIRECTIONS: dict[str, bool] = {
     "persona_distinctiveness": False,   # lower overlap = more distinct
     "balance_gini": False,
     "format_violations_total": False,
+    # Subtopic compliance
+    "subtopic_compliance_mean": True,
+    "subtopic_compliance_rate": True,
 }
 
 # Neutral tolerance — deltas smaller than this are considered "neutral"

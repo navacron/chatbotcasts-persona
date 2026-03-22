@@ -57,6 +57,7 @@ def _make_summary(result: dict) -> dict:
     rf = m.get("reference_free") or {}
     judge = m.get("llm_judge") or {}
     judge_scores = judge.get("scores", {}) if isinstance(judge, dict) else {}
+    sc = m.get("subtopic_compliance") or {}
 
     return {
         "timestamp": result.get("run_id", ""),
@@ -82,6 +83,9 @@ def _make_summary(result: dict) -> dict:
         "persona_fidelity": judge_scores.get("persona_fidelity"),
         "information_density": judge_scores.get("information_density"),
         "topic_coverage_judge": judge_scores.get("topic_coverage"),
+        # Subtopic compliance
+        "subtopic_compliance_mean": sc.get("mean_score"),
+        "subtopic_compliance_rate": sc.get("compliance_rate"),
     }
 
 

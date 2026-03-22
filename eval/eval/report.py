@@ -126,6 +126,11 @@ def print_run_summary(result: dict) -> None:
     if fmt and fmt.get("total_violations", 0) > 0:
         console.print(f"\n[yellow]Format Violations Detail:[/yellow] {fmt['per_type']}")
 
+    # Subtopic compliance detail
+    compliance = result.get("metrics", {}).get("subtopic_compliance") or {}
+    if compliance:
+        _print_subtopic_compliance(compliance)
+
 
 def _print_word_count_histogram(per_turn: list[dict]) -> None:
     """Prints a simple ASCII histogram of turn word counts."""
@@ -151,6 +156,47 @@ def _print_word_count_histogram(per_turn: list[dict]) -> None:
         bar = "█" * int(count / max_count * 20)
         color = "green" if "✓" in label else "yellow" if count > 0 else "dim"
         console.print(f"  [{color}]{label:12}[/{color}] {bar} {count}")
+
+
+def _print_subtopic_compliance(compliance: dict) -> None:
+    """Prints a per-turn subtopic compliance table."""
+    mean = compliance.get("mean_score")
+    rate = compliance.get("compliance_rate")
+    per_turn = compliance.get("per_turn", [])
+
+    mean_str = f"{mean:.1f}/10" if mean is not None else "N/A"
+    rate_str = f"{rate:.0%}" if rate is not None else "N/A"
+    console.print(f"\n[bold]Subtopic Compliance[/bold]  Mean: [cyan]{mean_str}[/cyan]  Rate ≥7: [cyan]{rate_str}[/cyan]")
+
+    if not per_turn:
+        return
+
+    table = Table(box=box.SIMPLE, show_header=True, header_style="bold magenta")
+    table.add_column("Turn", width=5, justify="right")
+    table.add_column("Speaker", width=20)
+    table.add_column("Subtopic", width=38)
+    table.add_column("Score", width=7, justify="right")
+
+    for t in per_turn:
+        score = t.get("score")
+        if score is None:
+            score_str = "[dim]N/A[/dim]"
+        elif score >= 7:
+            score_str = f"[green]{score}/10[/green]"
+        elif score >= 4:
+            score_str = f"[yellow]{score}/10[/yellow]"
+        else:
+            score_str = f"[red]{score}/10[/red]"
+
+        subtopic = (t.get("subtopic") or "")[:36]
+        table.add_row(
+            str(t.get("turn_index", "") + 1),
+            t.get("persona_name", "")[:19],
+            subtopic,
+            score_str,
+        )
+
+    console.print(table)
 
 
 def print_comparison(comparison: dict) -> None:
