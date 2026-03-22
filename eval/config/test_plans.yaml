@@ -1,0 +1,55 @@
+test_plans:
+  - id: "ai-regulation-2025"
+    title: "AI Regulation in 2025: Government vs Innovation"
+    description: "How should governments regulate AI without stifling innovation?"
+    persona_ids:
+      - "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"   # Andrew Ng
+      - "b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e"   # Elon Musk
+      - "f6a7b8c9-d0e1-4f2a-3b4c-5d6e7f8a9b0c"   # ChatBotCast Host
+    turns_per_subtopic: 2
+    reference_youtube_url: https://www.youtube.com/watch?v=6b25QoSIKlA
+    plan:
+      - "1. Why AI regulation became urgent in 2024"
+      - "2. The EU AI Act: what it actually requires"
+      - "3. Silicon Valley's argument against heavy regulation"
+      - "4. China's state-directed AI model as a case study"
+      - "5. Where safety and innovation genuinely conflict"
+      - "6. What engineers and researchers think policymakers get wrong"
+      - "7. Key takeaways for founders and practitioners"
+      - "8. Closing: is there a workable global framework ahead?"
+
+  - id: "future-of-work-ai"
+    title: "The Future of Work: AI, Automation, and Human Purpose"
+    description: "Will AI eliminate jobs or create new ones, and what does that mean for human identity?"
+    persona_ids:
+      - "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"   # Andrew Ng
+      - "d4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8a"   # Bill Gates
+      - "f6a7b8c9-d0e1-4f2a-3b4c-5d6e7f8a9b0c"   # ChatBotCast Host
+    turns_per_subtopic: 2
+    reference_youtube_url: null
+    plan:
+      - "1. The automation wave: what jobs are actually at risk"
+      - "2. Historical parallels: industrial revolution vs. AI transition"
+      - "3. Skills that remain uniquely human"
+      - "4. Education systems and how they're failing to adapt"
+      - "5. Universal basic income: promise or distraction"
+      - "6. What companies owe workers during transitions"
+      - "7. Takeaways and what individuals can do now"
+
+  - id: "climate-tech-reality"
+    title: "Climate Tech: Breakthrough or Hype Cycle?"
+    description: "Separating genuine climate solutions from over-funded promises."
+    persona_ids:
+      - "b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e"   # Elon Musk
+      - "e5f6a7b8-c9d0-4e1f-2a3b-4c5d6e7f8a9b"   # Jane Goodall
+      - "f6a7b8c9-d0e1-4f2a-3b4c-5d6e7f8a9b0c"   # ChatBotCast Host
+    turns_per_subtopic: 2
+    reference_youtube_url: null
+    plan:
+      - "1. The investment surge: who's funding what and why now"
+      - "2. Solar, batteries, and the technologies that are genuinely working"
+      - "3. Carbon capture: serious solution or fig leaf"
+      - "4. Conservation vs. technology: are they actually in tension"
+      - "5. The policy risk: why subsidies matter more than you think"
+      - "6. What a realistic 2035 looks like if things go well"
+      - "7. Closing reflections and open questions"

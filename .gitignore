@@ -47,3 +47,16 @@ next-env.d.ts
 .cache
 .turbo
 .clerk-session
+
+# Eval framework — generated data (do not check in)
+eval/.venv/
+eval/results/runs/
+eval/results/history.jsonl
+eval/results/transcripts/
+eval/.env
+
+# Python bytecode
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
