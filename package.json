@@ -11,6 +11,7 @@
   "dependencies": {
     "@ai-sdk/gateway": "2.0.7",
     "@ai-sdk/perplexity": "latest",
+    "@anthropic-ai/sdk": "^0.102.0",
     "@auth0/nextjs-auth0": "4.12.1",
     "@clerk/nextjs": "latest",
     "@hookform/resolvers": "^3.10.0",

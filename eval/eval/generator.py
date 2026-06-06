@@ -39,6 +39,7 @@ class PromptConfig:
     voice_rules: Optional[str] = None
     include_subtopic_prefix: bool = True
     include_conversation_history: bool = True
+    provider: str = "perplexity"  # "perplexity" | "claude"
 
 
 def build_system_prompt(persona: Persona, config: PromptConfig) -> str:

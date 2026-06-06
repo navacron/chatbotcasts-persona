@@ -66,19 +66,28 @@ def run_single_eval(plan_id: str, prompt_version: str, args: argparse.Namespace)
     )
     from eval.storage import append_to_history, save_run
 
-    perplexity_key = get_api_key("PERPLEXITY_API_KEY")
+    perplexity_key = os.environ.get("PERPLEXITY_API_KEY", "")
+    anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
     personas_dict = load_personas()
     config = load_prompt_config(prompt_version)
     plan = load_test_plan(plan_id)
 
+    if config.provider == "claude" and not anthropic_key:
+        console.print("[red]ANTHROPIC_API_KEY not set in eval/.env — required for provider=claude[/red]")
+        sys.exit(1)
+    if config.provider == "perplexity" and not perplexity_key:
+        console.print("[red]PERPLEXITY_API_KEY not set in eval/.env — required for provider=perplexity[/red]")
+        sys.exit(1)
+
     console.print(f"\n[bold cyan]Generating conversation:[/bold cyan] {plan['title']}")
-    console.print(f"  Prompt: [yellow]{prompt_version}[/yellow] | Personas: {len(plan['persona_ids'])} | Subtopics: {len(plan['plan'])}")
+    console.print(f"  Prompt: [yellow]{prompt_version}[/yellow] | Provider: [magenta]{config.provider}[/magenta] | Personas: {len(plan['persona_ids'])} | Subtopics: {len(plan['plan'])}")
 
     messages = generate_full_conversation(
         plan=plan,
         personas_dict=personas_dict,
         config=config,
         api_key=perplexity_key,
+        anthropic_api_key=anthropic_key,
         turns_override=args.turns,
     )
 

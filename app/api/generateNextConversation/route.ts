@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server"
 import { generateText } from "ai"
 import { createPerplexity } from "@ai-sdk/perplexity"
 import { stripMarkdown, removeCitations } from "@/lib/markdown-utils"
+import Anthropic from "@anthropic-ai/sdk"
 
 export const maxDuration = 30
 
@@ -93,78 +94,50 @@ ${conversationContext ? `Here is the conversation so far:\n\n${conversationConte
     console.log("[v0] System prompt:", systemPrompt)
     console.log("[v0] User prompt:", userPrompt)
 
-    const perplexity = createPerplexity({
-      apiKey: process.env.PERPLEXITY_API_KEY,
-    })
+    const backend = process.env.CONVERSATION_BACKEND ?? "perplexity"
+    let rawContent: string
+    let citations: string[] = []
 
-    const result = await generateText({
-      model: perplexity("sonar"),
-      system: systemPrompt,
-      messages: [{ role: "user", content: userPrompt }],
-      maxTokens: 500,
-      temperature: 0.9,
-    } as any)
+    if (backend === "claude") {
+      const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+      const response = await anthropic.messages.create({
+        model: "claude-sonnet-4-6",
+        max_tokens: 1024,
+        system: systemPrompt,
+        tools: [{ type: "web_search_20250305" as const, name: "web_search" }],
+        messages: [{ role: "user", content: userPrompt }],
+      })
 
-    console.log("[v0] Perplexity generated:", result.text)
+      rawContent = response.content
+        .filter((b): b is Anthropic.TextBlock => b.type === "text")
+        .map((b) => b.text)
+        .join("")
 
-    const responseBody = (result.response as any)?.body
-    const rawContent = responseBody?.choices?.[0]?.message?.content || result.text
-    const citations = responseBody?.citations || []
+      console.log("[v0] Claude generated:", rawContent)
+    } else {
+      const perplexity = createPerplexity({
+        apiKey: process.env.PERPLEXITY_API_KEY,
+      })
+      const result = await generateText({
+        model: perplexity("sonar"),
+        system: systemPrompt,
+        messages: [{ role: "user", content: userPrompt }],
+        maxTokens: 500,
+        temperature: 0.9,
+      } as any)
 
-    // Strip markdown formatting and remove citations from Perplexity response
-    const cleanedContent = stripMarkdown(rawContent)
-    const contentWithoutCitations = removeCitations(cleanedContent)
-
-    // Reformat using OpenAI for better readability
-    let reformattedContent = contentWithoutCitations
-    
-    // Check if OpenAI reformatting is enabled via environment variable
-    const enableOpenAIReformat = false
-    
-    if (process.env.OPENAI_API_KEY && enableOpenAIReformat) {
-      try {
-        const reformatPrompt = `The following is output from Perplexity. Reformat it to be more naturally converational. 
-        If there are many facts break them into smaller paragraphs, so it sounds like a conversation and not a fact dump
-Content to reformat:
-${contentWithoutCitations}`
-
-        const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-          },
-          body: JSON.stringify({
-            model: "gpt-4o-mini",
-            messages: [
-              {
-                role: "user",
-                content: reformatPrompt,
-              },
-            ],
-            max_tokens: 1000,
-            temperature: 0.7,
-          }),
-        })
-
-        if (!openaiResponse.ok) {
-          throw new Error(`OpenAI API error: ${openaiResponse.statusText}`)
-        }
-
-        const openaiData = await openaiResponse.json()
-        reformattedContent = openaiData.choices?.[0]?.message?.content || contentWithoutCitations
-        console.log("[v0] OpenAI reformatted content:", reformattedContent)
-      } catch (reformatError) {
-        console.error("[v0] Error reformatting with OpenAI, using original content:", reformatError)
-        // Fall back to original content if reformatting fails
-        reformattedContent = contentWithoutCitations
-      }
+      console.log("[v0] Perplexity generated:", result.text)
+      const responseBody = (result.response as any)?.body
+      rawContent = responseBody?.choices?.[0]?.message?.content || result.text
+      citations = responseBody?.citations || []
     }
 
-    console.log("[v0] Final content:", reformattedContent)
+    const cleanedContent = removeCitations(stripMarkdown(rawContent))
+
+    console.log("[v0] Final content:", cleanedContent)
     return NextResponse.json({
       success: true,
-      content: reformattedContent,
+      content: cleanedContent,
       citations: citations,
       personaId: currentPersonaId,
       personaName: currentPersona.name,

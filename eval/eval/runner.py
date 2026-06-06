@@ -1,6 +1,6 @@
 """
 runner.py — Orchestrates full conversation generation.
-Loads configs, calls Perplexity directly, accumulates conversation history.
+Loads configs, calls Perplexity or Claude, accumulates conversation history.
 """
 
 import os
@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
+import anthropic as anthropic_sdk
 import requests
 import yaml
 from tqdm import tqdm
@@ -64,6 +65,7 @@ def load_prompt_config(version: str, prompts_dir: Optional[Path] = None) -> Prom
         voice_rules=data.get("voice_rules"),
         include_subtopic_prefix=data.get("include_subtopic_prefix", True),
         include_conversation_history=data.get("include_conversation_history", True),
+        provider=data.get("provider", "perplexity"),
     )
 
 
@@ -125,6 +127,46 @@ def call_perplexity(
 
 
 # ---------------------------------------------------------------------------
+# Claude API call
+# ---------------------------------------------------------------------------
+
+def call_claude(
+    system_prompt: str,
+    user_prompt: str,
+    model: str,
+    temperature: float,
+    max_tokens: int,
+    api_key: str,
+    max_retries: int = 5,
+) -> tuple[str, list[str]]:
+    """
+    Calls Claude via Anthropic SDK with web_search_20250305 tool enabled.
+    Returns (raw_text, citations). Retries with exponential backoff on rate limits.
+    """
+    client = anthropic_sdk.Anthropic(api_key=api_key)
+    for attempt in range(max_retries):
+        try:
+            response = client.messages.create(
+                model=model,
+                max_tokens=max(max_tokens, 1024),  # web search needs extra token budget
+                system=system_prompt,
+                tools=[{"type": "web_search_20250305", "name": "web_search"}],
+                messages=[{"role": "user", "content": user_prompt}],
+                temperature=temperature,
+            )
+            raw_text = "".join(
+                b.text for b in response.content if b.type == "text"
+            )
+            return raw_text, []
+        except anthropic_sdk.RateLimitError as e:
+            if attempt == max_retries - 1:
+                raise
+            wait = 30 * (2 ** attempt)  # 30s, 60s, 120s, 240s
+            tqdm.write(f"  [rate limit] sleeping {wait}s before retry {attempt + 1}/{max_retries - 1}...")
+            time.sleep(wait)
+
+
+# ---------------------------------------------------------------------------
 # Single turn generation
 # ---------------------------------------------------------------------------
 
@@ -135,9 +177,11 @@ def generate_turn(
     config: PromptConfig,
     api_key: str,
     focused_subtopic: Optional[str] = None,
+    anthropic_api_key: Optional[str] = None,
 ) -> Message:
     """
     Generates a single conversation turn for the given persona.
+    Branches on config.provider ("perplexity" | "claude").
     Applies strip_markdown + remove_citations post-processing.
     """
     system_prompt = build_system_prompt(persona, config)
@@ -149,14 +193,26 @@ def generate_turn(
         focused_subtopic=focused_subtopic,
     )
 
-    raw_text, _citations = call_perplexity(
-        system_prompt=system_prompt,
-        user_prompt=user_prompt,
-        model=config.model,
-        temperature=config.temperature,
-        max_tokens=config.max_tokens,
-        api_key=api_key,
-    )
+    if config.provider == "claude":
+        if not anthropic_api_key:
+            raise ValueError("ANTHROPIC_API_KEY required when provider=claude")
+        raw_text, _citations = call_claude(
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            model=config.model,
+            temperature=config.temperature,
+            max_tokens=config.max_tokens,
+            api_key=anthropic_api_key,
+        )
+    else:
+        raw_text, _citations = call_perplexity(
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            model=config.model,
+            temperature=config.temperature,
+            max_tokens=config.max_tokens,
+            api_key=api_key,
+        )
 
     cleaned = remove_citations(strip_markdown(raw_text))
 
@@ -180,6 +236,7 @@ def generate_full_conversation(
     api_key: str,
     turns_override: Optional[int] = None,
     delay_between_calls: float = 0.5,
+    anthropic_api_key: Optional[str] = None,
 ) -> list[Message]:
     """
     Drives the full conversation:
@@ -223,10 +280,12 @@ def generate_full_conversation(
                         config=config,
                         api_key=api_key,
                         focused_subtopic=subtopic,
+                        anthropic_api_key=anthropic_api_key,
                     )
                     messages.append(msg)
                     pbar.update(1)
-                    if delay_between_calls > 0:
-                        time.sleep(delay_between_calls)
+                    effective_delay = max(delay_between_calls, 5.0) if config.provider == "claude" else delay_between_calls
+                    if effective_delay > 0:
+                        time.sleep(effective_delay)
 
     return messages
