@@ -3,9 +3,12 @@ generator.py — Prompt builder that mirrors generateNextConversation/route.ts e
 Ports the TypeScript prompt construction and post-processing logic to Python.
 """
 
+import os
 import re
 from dataclasses import dataclass, field
 from typing import Optional
+
+CONVERSATION_HISTORY_LIMIT = int(os.environ.get("CONVERSATION_HISTORY_LIMIT", "10"))
 
 
 @dataclass
@@ -53,12 +56,13 @@ def build_system_prompt(persona: Persona, config: PromptConfig) -> str:
     )
 
 
-def build_conversation_context(messages: list[Message]) -> str:
+def build_conversation_context(messages: list[Message], limit: int = CONVERSATION_HISTORY_LIMIT) -> str:
     """
-    Joins messages as 'PersonaName: content' blocks separated by double newlines.
-    Mirrors the TypeScript: messages.map(msg => `${msg.role}: ${msg.content}`).join('\n\n')
+    Joins the last `limit` messages as 'PersonaName: content' blocks.
+    Truncating history keeps input tokens flat instead of growing quadratically.
     """
-    return "\n\n".join(f"{msg.role}: {msg.content}" for msg in messages)
+    recent = messages[-limit:] if len(messages) > limit else messages
+    return "\n\n".join(f"{msg.role}: {msg.content}" for msg in recent)
 
 
 def build_user_prompt(

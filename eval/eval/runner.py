@@ -148,7 +148,7 @@ def call_claude(
         try:
             response = client.messages.create(
                 model=model,
-                max_tokens=max(max_tokens, 1024),  # web search needs extra token budget
+                max_tokens=max(max_tokens, 400),  # 400 is enough for 90-130 word responses
                 system=system_prompt,
                 tools=[{"type": "web_search_20250305", "name": "web_search"}],
                 messages=[{"role": "user", "content": user_prompt}],

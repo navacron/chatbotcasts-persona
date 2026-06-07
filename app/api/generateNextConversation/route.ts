@@ -49,9 +49,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Current persona not found" }, { status: 404 })
     }
 
+    const historyLimit = parseInt(process.env.CONVERSATION_HISTORY_LIMIT ?? "10", 10)
     let conversationContext = ""
     if (messages && messages.length > 0) {
-      conversationContext = messages
+      const recentMessages = messages.slice(-historyLimit)
+      conversationContext = recentMessages
         .map((msg: any) => {
           const personaName = msg.role || "Unknown"
           return `${personaName}: ${msg.content}`
@@ -100,20 +102,34 @@ ${conversationContext ? `Here is the conversation so far:\n\n${conversationConte
 
     if (backend === "claude") {
       const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
+      // Only search if the topic is likely to have recent developments worth citing.
+      // Avoid forcing a search on every turn — each search costs $0.01 + ~4K tokens of context.
+      const promptWithSearch =
+        userPrompt +
+        `\n\nIf there is a specific recent statistic, regulatory update, or news event from the past 12 months that would sharpen your point, use web_search to find it. Otherwise draw from your own knowledge.`
+
       const response = await anthropic.messages.create({
         model: "claude-sonnet-4-6",
-        max_tokens: 1024,
+        max_tokens: 600,
         system: systemPrompt,
         tools: [{ type: "web_search_20250305" as const, name: "web_search" }],
-        messages: [{ role: "user", content: userPrompt }],
+        messages: [{ role: "user", content: promptWithSearch }],
       })
 
-      rawContent = response.content
-        .filter((b): b is Anthropic.TextBlock => b.type === "text")
-        .map((b) => b.text)
-        .join("")
+      // Use only the last text block — Claude emits a text block before
+      // web search runs and another after. The last one is the actual response.
+      const textBlocks = response.content.filter((b): b is Anthropic.TextBlock => b.type === "text")
+      rawContent = textBlocks[textBlocks.length - 1]?.text ?? ""
+
+      citations = response.content
+        .filter((b: any) => b.type === "web_search_tool_result")
+        .flatMap((b: any) => (Array.isArray(b.content) ? b.content : []))
+        .filter((item: any) => item.type === "web_search_result" && item.url)
+        .map((item: any) => item.url as string)
 
       console.log("[v0] Claude generated:", rawContent)
+      console.log("[v0] Claude citations:", citations)
     } else {
       const perplexity = createPerplexity({
         apiKey: process.env.PERPLEXITY_API_KEY,
