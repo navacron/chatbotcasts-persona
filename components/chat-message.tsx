@@ -49,8 +49,83 @@ export default function ChatMessage({
     setIsEditing(false)
   }
 
+  // Render message text and turn [1], [2], ... into clickable citation links.
+  // If there are citations but no inline markers, append [1][2]... at the end.
   const renderMessageWithCitations = () => {
-    return isEditing ? editText : message.message
+    const text = isEditing ? editText : message.message
+    const citations = message.citations || []
+    
+    // If no citations, just return the text as-is
+    if (!citations || citations.length === 0) {
+      return text
+    }
+
+    const parts: (string | JSX.Element)[] = []
+    const regex = /\[(\d+)\]/g
+    let lastIndex = 0
+    let match: RegExpExecArray | null
+    let matchCount = 0
+
+    while ((match = regex.exec(text)) !== null) {
+      const matchIndex = match.index
+
+      // Push text before the citation
+      if (matchIndex > lastIndex) {
+        parts.push(text.slice(lastIndex, matchIndex))
+      }
+
+      const citationNumber = parseInt(match[1], 10)
+      const href = citations[citationNumber - 1]
+
+      if (href) {
+        parts.push(
+          <a
+            key={`msg-${message.id}-cite-${citationNumber}-${matchIndex}-${matchCount}`}
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:underline font-medium"
+          >
+            [{citationNumber}]
+          </a>,
+        )
+        matchCount++
+      } else {
+        // No matching citation URL, keep the raw text
+        parts.push(match[0])
+      }
+
+      lastIndex = regex.lastIndex
+    }
+
+    // Push any remaining text after the last citation
+    if (lastIndex < text.length) {
+      parts.push(text.slice(lastIndex))
+    }
+
+    // If no matches were found in the text but we have citations,
+    // append [1][2]...[n] as linked citations at the end of the message.
+    if (parts.length === 0) {
+      parts.push(text)
+      parts.push(" ")
+
+      citations.forEach((href, idx) => {
+        const citationNumber = idx + 1
+        parts.push(
+          <a
+            key={`msg-${message.id}-auto-cite-${citationNumber}`}
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:underline font-medium"
+          >
+            [{citationNumber}]
+          </a>,
+        )
+      })
+    }
+
+    return parts
   }
 
   return (

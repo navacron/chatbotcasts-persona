@@ -3,7 +3,6 @@ import { createClient } from "@/lib/supabase/server"
 import { generateText } from "ai"
 import { createPerplexity } from "@ai-sdk/perplexity"
 import { stripMarkdown, removeCitations } from "@/lib/markdown-utils"
-import Anthropic from "@anthropic-ai/sdk"
 
 export const maxDuration = 30
 
@@ -49,11 +48,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Current persona not found" }, { status: 404 })
     }
 
-    const historyLimit = parseInt(process.env.CONVERSATION_HISTORY_LIMIT ?? "10", 10)
     let conversationContext = ""
     if (messages && messages.length > 0) {
-      const recentMessages = messages.slice(-historyLimit)
-      conversationContext = recentMessages
+      conversationContext = messages
         .map((msg: any) => {
           const personaName = msg.role || "Unknown"
           return `${personaName}: ${msg.content}`
@@ -96,64 +93,78 @@ ${conversationContext ? `Here is the conversation so far:\n\n${conversationConte
     console.log("[v0] System prompt:", systemPrompt)
     console.log("[v0] User prompt:", userPrompt)
 
-    const backend = process.env.CONVERSATION_BACKEND ?? "perplexity"
-    let rawContent: string
-    let citations: string[] = []
+    const perplexity = createPerplexity({
+      apiKey: process.env.PERPLEXITY_API_KEY,
+    })
 
-    if (backend === "claude") {
-      const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+    const result = await generateText({
+      model: perplexity("sonar"),
+      system: systemPrompt,
+      messages: [{ role: "user", content: userPrompt }],
+      maxTokens: 500,
+      temperature: 0.9,
+    } as any)
 
-      // Only search if the topic is likely to have recent developments worth citing.
-      // Avoid forcing a search on every turn — each search costs $0.01 + ~4K tokens of context.
-      const promptWithSearch =
-        userPrompt +
-        `\n\nIf there is a specific recent statistic, regulatory update, or news event from the past 12 months that would sharpen your point, use web_search to find it. Otherwise draw from your own knowledge.`
+    console.log("[v0] Perplexity generated:", result.text)
 
-      const response = await anthropic.messages.create({
-        model: "claude-sonnet-4-6",
-        max_tokens: 600,
-        system: systemPrompt,
-        tools: [{ type: "web_search_20250305" as const, name: "web_search" }],
-        messages: [{ role: "user", content: promptWithSearch }],
-      })
+    const responseBody = (result.response as any)?.body
+    const rawContent = responseBody?.choices?.[0]?.message?.content || result.text
+    const citations = responseBody?.citations || []
 
-      // Use only the last text block — Claude emits a text block before
-      // web search runs and another after. The last one is the actual response.
-      const textBlocks = response.content.filter((b): b is Anthropic.TextBlock => b.type === "text")
-      rawContent = textBlocks[textBlocks.length - 1]?.text ?? ""
+    // Strip markdown formatting and remove citations from Perplexity response
+    const cleanedContent = stripMarkdown(rawContent)
+    const contentWithoutCitations = removeCitations(cleanedContent)
 
-      citations = response.content
-        .filter((b: any) => b.type === "web_search_tool_result")
-        .flatMap((b: any) => (Array.isArray(b.content) ? b.content : []))
-        .filter((item: any) => item.type === "web_search_result" && item.url)
-        .map((item: any) => item.url as string)
+    // Reformat using OpenAI for better readability
+    let reformattedContent = contentWithoutCitations
+    
+    // Check if OpenAI reformatting is enabled via environment variable
+    const enableOpenAIReformat = false
+    
+    if (process.env.OPENAI_API_KEY && enableOpenAIReformat) {
+      try {
+        const reformatPrompt = `The following is output from Perplexity. Reformat it to be more naturally converational. 
+        If there are many facts break them into smaller paragraphs, so it sounds like a conversation and not a fact dump
+Content to reformat:
+${contentWithoutCitations}`
 
-      console.log("[v0] Claude generated:", rawContent)
-      console.log("[v0] Claude citations:", citations)
-    } else {
-      const perplexity = createPerplexity({
-        apiKey: process.env.PERPLEXITY_API_KEY,
-      })
-      const result = await generateText({
-        model: perplexity("sonar"),
-        system: systemPrompt,
-        messages: [{ role: "user", content: userPrompt }],
-        maxTokens: 500,
-        temperature: 0.9,
-      } as any)
+        const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+          },
+          body: JSON.stringify({
+            model: "gpt-4o-mini",
+            messages: [
+              {
+                role: "user",
+                content: reformatPrompt,
+              },
+            ],
+            max_tokens: 1000,
+            temperature: 0.7,
+          }),
+        })
 
-      console.log("[v0] Perplexity generated:", result.text)
-      const responseBody = (result.response as any)?.body
-      rawContent = responseBody?.choices?.[0]?.message?.content || result.text
-      citations = responseBody?.citations || []
+        if (!openaiResponse.ok) {
+          throw new Error(`OpenAI API error: ${openaiResponse.statusText}`)
+        }
+
+        const openaiData = await openaiResponse.json()
+        reformattedContent = openaiData.choices?.[0]?.message?.content || contentWithoutCitations
+        console.log("[v0] OpenAI reformatted content:", reformattedContent)
+      } catch (reformatError) {
+        console.error("[v0] Error reformatting with OpenAI, using original content:", reformatError)
+        // Fall back to original content if reformatting fails
+        reformattedContent = contentWithoutCitations
+      }
     }
 
-    const cleanedContent = removeCitations(stripMarkdown(rawContent))
-
-    console.log("[v0] Final content:", cleanedContent)
+    console.log("[v0] Final content:", reformattedContent)
     return NextResponse.json({
       success: true,
-      content: cleanedContent,
+      content: reformattedContent,
       citations: citations,
       personaId: currentPersonaId,
       personaName: currentPersona.name,

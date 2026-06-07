@@ -90,7 +90,7 @@ def run_llm_judge(
     personas: list,
     plan: dict,
     anthropic_api_key: str,
-    model: str = "claude-haiku-4-5-20251001",
+    model: str = "claude-opus-4-6",
     num_runs: int = 3,
 ) -> dict:
     """
