@@ -90,7 +90,7 @@ def run_llm_judge(
     personas: list,
     plan: dict,
     anthropic_api_key: str,
-    model: str = "claude-opus-4-6",
+    model: str = "claude-sonnet-4-6",
     num_runs: int = 3,
 ) -> dict:
     """
@@ -102,14 +102,19 @@ def run_llm_judge(
     client = anthropic.Anthropic(api_key=anthropic_api_key)
     prompt = build_judge_prompt(messages, personas, plan)
 
+    # Cache the system + full prompt — all num_runs calls are identical,
+    # so runs 2+ pay only the cache-read rate (~10% of input cost).
+    cached_system = [{"type": "text", "text": JUDGE_SYSTEM, "cache_control": {"type": "ephemeral"}}]
+    cached_messages = [{"role": "user", "content": [{"type": "text", "text": prompt, "cache_control": {"type": "ephemeral"}}]}]
+
     raw_runs = []
     for i in range(num_runs):
         response = client.messages.create(
             model=model,
             max_tokens=256,
-            system=JUDGE_SYSTEM,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.3,  # Low temperature for consistent scoring
+            system=cached_system,
+            messages=cached_messages,
+            temperature=0.3,
         )
         text = response.content[0].text
         scores = _parse_scores(text)

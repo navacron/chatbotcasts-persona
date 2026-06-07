@@ -54,6 +54,24 @@ test_plans:
       - "7. Common mistakes people make and how to avoid them"
       - "8. Final week strategy and what to do the day before the exam"
 
+  - id: "travel-smart-2025"
+    title: "Travel in 2025: Beyond the Tourist Trap"
+    description: "How to travel deeper, cheaper, and more meaningfully in an era of overtourism, AI trip planning, and algorithmic destinations."
+    persona_ids:
+      - "f6a7b8c9-d0e1-4f2a-3b4c-5d6e7f8a9b0c"   # ChatBotCast Host
+      - "bff23be1-5e26-4624-867d-a079ef97c17c"   # Sab Guru
+    turns_per_subtopic: 2
+    reference_youtube_url: null
+    plan:
+      - "1. The overtourism problem: why Venice, Bali, and Santorini are warning signs"
+      - "2. Slow travel vs. trip-ticking: what you actually remember five years later"
+      - "3. How to find places before the algorithm does"
+      - "4. Budget travel myths: what actually saves money vs. what just feels frugal"
+      - "5. Solo travel: the real experience, not the Instagram version"
+      - "6. AI trip planning tools — useful shortcut or authenticity killer"
+      - "7. What travel actually teaches you vs. what people claim it teaches"
+      - "8. Where to go right now and what to skip in 2025"
+
   - id: "climate-tech-reality"
     title: "Climate Tech: Breakthrough or Hype Cycle?"
     description: "Separating genuine climate solutions from over-funded promises."

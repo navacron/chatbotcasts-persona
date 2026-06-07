@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { currentPersonaId, allPersonaIds, messages, title, focusedSubtopic } = body
 
-    console.log("[v0] Generate conversation request:", {
+    console.log("[v8] Generate conversation request:", {
       currentPersonaId,
       allPersonaIds,
       messagesLength: messages?.length || 0,
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     const { data: personas, error: personasError } = await supabase.from("persona").select("*").in("id", personaIdsToFetch)
 
     if (personasError) {
-      console.error("[v0] Error fetching personas:", personasError)
+      console.error("[v8] Error fetching personas:", personasError)
       return NextResponse.json({ error: "Failed to fetch personas" }, { status: 500 })
     }
 
@@ -58,40 +58,55 @@ export async function POST(request: Request) {
         .join("\n\n")
     }
 
-    const systemPrompt = `You are ${currentPersona.name}. And your role is: ${currentPersona.prompt}`
+    const systemPrompt = `You are ${currentPersona.name} — the actual person, not an imitation.
 
-    const userPrompt = `${focusedSubtopic ? `Currently discussing: ${focusedSubtopic}\n\n` : ""}Guidelines:
-You are speaking in a recorded podcast conversation. Respond as ${currentPersona.name} would naturally speak — not as a writer, not as a professor.
+${currentPersona.prompt}
 
-HARD RULES — these are non-negotiable:
-1. Do NOT open your turn by restating, summarizing, or acknowledging what the previous speaker said. No "Great point", no "You nailed it", no "As [Name] said". Start with YOUR own thought, mid-conversation.
-2. Do NOT end with a summary statement or philosophical wrap-up ("What stays with me...", "What lingers...", "The real question is..."). End on a specific claim, a question, or an unresolved tension.
-3. You MUST either disagree with something from the previous turn, introduce a genuinely new angle, or challenge an assumption. Pure agreement is not allowed.
-4. Pick ONE specific point and go deep. Do not enumerate multiple facts or regulatory requirements. No information dumps.
-5. Response length: 90–130 words. Strict.
+You are mid-conversation in a live podcast. Someone just said something and you're responding. You think out loud. You're direct, specific, personal. You sound like yourself — not like a policy briefing, not like a Wikipedia summary. You use contractions. You can start mid-thought. Incomplete sentences are fine in speech.`
+
+    const userPrompt = `${focusedSubtopic ? `Currently discussing: ${focusedSubtopic}\n\n` : ""}FOUR RULES:
+
+1. DON'T REPEAT. Look at what's been said in this subtopic exchange. Do not state any fact, date, example, or argument already made in this exchange. Add something new — your angle, your experience, a complication they missed.
+
+2. STAY SPECIFIC. Name actual companies, products, policy articles, years, people, numbers. "Companies" means nothing. "OpenAI in 2024" means something.
+
+3. GO DEEP. Pick ONE point and dig into it. Don't enumerate. Don't list multiple angles. Real conversations don't cover everything — they get specific and stay there.
+
+4. COVER THE SUBTOPIC. Take your own angle — but stay on what's currently being discussed. Don't drift to adjacent topics.
+
+BANNED OPENERS — these sound generic, not like you:
+"Yeah, and", "Hmph,", "Ugh,", "Hah,", "That's the part people miss", "That X point is exactly where",
+"What X is...", "What matters here...", "What's easy to miss...", "What I'd push on is",
+"As X mentioned", "Building on that", "Great point", "That's fair, but"
+
+BANNED PHRASES — these signal a pattern-matching model, not a person:
+"at the end of the day", "governance framework", "innovation versus regulation",
+"The real tension", "The real question", "what stays with me", "ecosystem", "stakeholders"
 
 Formatting:
-Spoken language only. You are talking, not writing.
-Use contractions (don't, isn't, we've, they're).
-Short sentences. Incomplete thoughts are fine. Real speech is messy.
-Plain text only. No markdown, no asterisks, no headings, no bullet points.
+Spoken language only. Contractions everywhere. Short sentences are fine. Messy is okay.
+Plain text — no markdown, no bullets, no headings.
 
 Novelty rule:
-Every turn must move the conversation to a different place than where it started.
+Look at what's been said in this subtopic exchange. Advance it — don't summarize.
 If the previous speaker made a claim: dispute it, qualify it, or flip it with a counter-example.
-Never repeat a fact, statistic, or example already mentioned in the conversation.
+If the previous speaker asked a question: answer it obliquely, not directly.
+Take your angle: economic, engineering, historical, or what actually failed in practice.
+Stay on the current subtopic.
 
 Voice rules:
-Your voice must be recognizably yours, not generic.
-Speak from your own experience, your own worldview, your own failures and convictions.
-If you are a host or moderator: ask a sharp, uncomfortable question. Do not recap. Do not agree. Challenge.
-If you are a domain expert: be specific to your domain. Reference real things you know. Do not be a generalist.
-If you are an entrepreneur or builder: talk about constraints, execution, what actually fails in practice.
+Your voice must be recognizably yours — not generic. Speak from your own experience, worldview, and convictions.
+Use language you'd actually use — not academic hedging, not corporate speak.
+If you're the host or moderator: ask a sharp question or surface a tension. Don't argue. Don't recap.
+If you're a domain expert: be specific to your domain. Reference real things you know. Don't be a generalist.
+If you're a builder or entrepreneur: talk about constraints, execution, what actually failed in practice.
 
-${conversationContext ? `Here is the conversation so far:\n\n${conversationContext}\n\n` : ""}Respond as ${currentPersona.name} speaking live on a podcast about <topic>${title}</topic>. Start speaking immediately — no preamble, no recap.`
+${conversationContext ? `Here is the conversation so far:\n\n${conversationContext}\n\n` : ""}Respond as ${currentPersona.name} speaking live on a podcast about <topic>${title}</topic>.
+90–120 words. Start immediately — no preamble.
+Sound like yourself talking, not like you're writing a column.`
 
-    console.log("[v0] System prompt:", systemPrompt)
-    console.log("[v0] User prompt:", userPrompt)
+    console.log("[v8] System prompt:", systemPrompt)
+    console.log("[v8] User prompt:", userPrompt)
 
     const perplexity = createPerplexity({
       apiKey: process.env.PERPLEXITY_API_KEY,
@@ -101,11 +116,11 @@ ${conversationContext ? `Here is the conversation so far:\n\n${conversationConte
       model: perplexity("sonar"),
       system: systemPrompt,
       messages: [{ role: "user", content: userPrompt }],
-      maxTokens: 500,
-      temperature: 0.9,
+      maxTokens: 175,
+      temperature: 1.0,
     } as any)
 
-    console.log("[v0] Perplexity generated:", result.text)
+    console.log("[v8] Perplexity generated:", result.text)
 
     const responseBody = (result.response as any)?.body
     const rawContent = responseBody?.choices?.[0]?.message?.content || result.text
@@ -153,15 +168,15 @@ ${contentWithoutCitations}`
 
         const openaiData = await openaiResponse.json()
         reformattedContent = openaiData.choices?.[0]?.message?.content || contentWithoutCitations
-        console.log("[v0] OpenAI reformatted content:", reformattedContent)
+        console.log("[v8] OpenAI reformatted content:", reformattedContent)
       } catch (reformatError) {
-        console.error("[v0] Error reformatting with OpenAI, using original content:", reformatError)
+        console.error("[v8] Error reformatting with OpenAI, using original content:", reformatError)
         // Fall back to original content if reformatting fails
         reformattedContent = contentWithoutCitations
       }
     }
 
-    console.log("[v0] Final content:", reformattedContent)
+    console.log("[v8] Final content:", reformattedContent)
     return NextResponse.json({
       success: true,
       content: reformattedContent,
@@ -172,7 +187,7 @@ ${contentWithoutCitations}`
       timestamp: new Date().toISOString(),
     })
   } catch (error) {
-    console.error("[v0] Error in generateNextConversation:", error)
+    console.error("[v8] Error in generateNextConversation:", error)
     return NextResponse.json(
       { error: "Internal server error", details: error instanceof Error ? error.message : "Unknown error" },
       { status: 500 },
