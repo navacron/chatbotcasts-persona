@@ -100,6 +100,7 @@ export default function ChatConversation({ data, onPublish }: ChatConversationPr
         body: JSON.stringify({
           title: data.topic,
           description: data.description || "",
+          niche: data.niche || "",
         }),
       })
 
@@ -125,6 +126,7 @@ export default function ChatConversation({ data, onPublish }: ChatConversationPr
         body: JSON.stringify({
           title: data?.topic || "General Discussion",
           description: data?.description || "",
+          niche: data?.niche || "",
         }),
       })
 
@@ -322,7 +324,8 @@ export default function ChatConversation({ data, onPublish }: ChatConversationPr
         currentPersonaId: speakerToUse,
         allPersonaIds: personas,
         title: data?.topic || "General Discussion",
-        focusedSubtopic: focusedSubtopic, // NEW: Add focused subtopic
+        focusedSubtopic: focusedSubtopic,
+        isFirstTurnOnSubtopic: messagesSinceLastAdvance === 0,
         messages: messages.map((msg, index) => ({
           id: msg.id || index + 1,
           personaId: msg.persona,
@@ -391,7 +394,17 @@ export default function ChatConversation({ data, onPublish }: ChatConversationPr
       }
 
       setMessages([...messages, newMessage])
-      setNextSpeaker(null)
+
+      // In manual mode, auto-highlight the next persona so the user only needs
+      // to click Generate — no manual persona re-selection required each turn.
+      const nonHumanPersonas = personas.filter((id) => id !== HUMAN_PERSONA_ID)
+      if (turnMode === "manual" && nonHumanPersonas.length > 1) {
+        const currentIndex = nonHumanPersonas.indexOf(speakerToUse)
+        const nextIndex = (currentIndex + 1) % nonHumanPersonas.length
+        setNextSpeaker(nonHumanPersonas[nextIndex])
+      } else {
+        setNextSpeaker(null)
+      }
 
       // Auto-increment focus based on topic progression settings
       if (plan && !isTopicLocked) {

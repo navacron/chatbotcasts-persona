@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     const supabase = await createClient()
 
     const body = await request.json()
-    const { currentPersonaId, allPersonaIds, messages, title, focusedSubtopic } = body
+    const { currentPersonaId, allPersonaIds, messages, title, focusedSubtopic, isFirstTurnOnSubtopic } = body
 
     console.log("[v8] Generate conversation request:", {
       currentPersonaId,
@@ -62,44 +62,44 @@ export async function POST(request: Request) {
 
 ${currentPersona.prompt}
 
-You are mid-conversation in a live podcast. Someone just said something and you're responding. You think out loud. You're direct, specific, personal. You sound like yourself — not like a policy briefing, not like a Wikipedia summary. You use contractions. You can start mid-thought. Incomplete sentences are fine in speech.`
+You are speaking on a live podcast. Be direct, specific, personal. Sound like yourself — not like a policy briefing, not like a Wikipedia summary. Use contractions. Speak, don't write.`
 
-    const userPrompt = `${focusedSubtopic ? `Currently discussing: ${focusedSubtopic}\n\n` : ""}FOUR RULES:
+    const openingInstruction = isFirstTurnOnSubtopic || !conversationContext
+      ? `You are the FIRST voice on this topic. Orient the listener — briefly state what this topic is actually about in plain terms, then share your angle on it. Don't assume they already know the stakes. Give them a foothold before you get specific.`
+      : `Someone just made a point. Respond to it — dispute it, qualify it, or flip it with a counter-example. Don't restate what they said; advance it.`
+
+    const userPrompt = `${focusedSubtopic ? `Currently discussing: ${focusedSubtopic}\n\n` : ""}${openingInstruction}
+
+FOUR RULES:
 
 1. DON'T REPEAT. Look at what's been said in this subtopic exchange. Do not state any fact, date, example, or argument already made in this exchange. Add something new — your angle, your experience, a complication they missed.
 
-2. STAY SPECIFIC. Name actual companies, products, policy articles, years, people, numbers. "Companies" means nothing. "OpenAI in 2024" means something.
+2. STAY SPECIFIC. Name actual companies, products, policy articles, years, people, numbers. "Companies" means nothing. "OUIGO in 2024" means something.
 
 3. GO DEEP. Pick ONE point and dig into it. Don't enumerate. Don't list multiple angles. Real conversations don't cover everything — they get specific and stay there.
 
 4. COVER THE SUBTOPIC. Take your own angle — but stay on what's currently being discussed. Don't drift to adjacent topics.
 
-BANNED OPENERS — these sound generic, not like you:
-"Yeah, and", "Hmph,", "Ugh,", "Hah,", "That's the part people miss", "That X point is exactly where",
+BANNED OPENERS — never start your response with these:
+"Yeah, and", "Hmph,", "Ugh,", "Hah,", "That's the part people miss",
 "What X is...", "What matters here...", "What's easy to miss...", "What I'd push on is",
-"As X mentioned", "Building on that", "Great point", "That's fair, but"
+"As X mentioned", "Building on that", "Great point", "That's fair, but",
+"I'd push", "I'd argue", "I'd say", "Look,", "So here's the thing",
+"Here's the thing", "The thing is", "Here's what", "Let me be clear"
 
 BANNED PHRASES — these signal a pattern-matching model, not a person:
 "at the end of the day", "governance framework", "innovation versus regulation",
 "The real tension", "The real question", "what stays with me", "ecosystem", "stakeholders"
 
 Formatting:
-Spoken language only. Contractions everywhere. Short sentences are fine. Messy is okay.
+Spoken language only. Contractions everywhere. Short sentences are fine.
 Plain text — no markdown, no bullets, no headings.
-
-Novelty rule:
-Look at what's been said in this subtopic exchange. Advance it — don't summarize.
-If the previous speaker made a claim: dispute it, qualify it, or flip it with a counter-example.
-If the previous speaker asked a question: answer it obliquely, not directly.
-Take your angle: economic, engineering, historical, or what actually failed in practice.
-Stay on the current subtopic.
 
 Voice rules:
 Your voice must be recognizably yours — not generic. Speak from your own experience, worldview, and convictions.
 Use language you'd actually use — not academic hedging, not corporate speak.
 If you're the host or moderator: ask a sharp question or surface a tension. Don't argue. Don't recap.
 If you're a domain expert: be specific to your domain. Reference real things you know. Don't be a generalist.
-If you're a builder or entrepreneur: talk about constraints, execution, what actually failed in practice.
 
 ${conversationContext ? `Here is the conversation so far:\n\n${conversationContext}\n\n` : ""}Respond as ${currentPersona.name} speaking live on a podcast about <topic>${title}</topic>.
 90–120 words. Start immediately — no preamble.

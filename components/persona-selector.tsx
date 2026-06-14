@@ -42,6 +42,16 @@ const getPersonaAvatar = (name: string): string => {
   if (lowerName.includes('jane')) return '🌍'
   if (lowerName.includes('bill')) return '💡'
   if (lowerName.includes('host')) return '🎙️'
+  // Niche personas
+  if (lowerName.includes('culture purist')) return '🌿'
+  if (lowerName.includes('bucket-list tourist')) return '📸'
+  if (lowerName.includes('value hacker')) return '💰'
+  if (lowerName.includes('value bull')) return '📈'
+  if (lowerName.includes('macro bear')) return '📉'
+  if (lowerName.includes('technical analyst')) return '📊'
+  if (lowerName.includes('defense counsel')) return '⚖️'
+  if (lowerName.includes('aggressive prosecutor')) return '🔍'
+  if (lowerName.includes('neutral arbitrator')) return '🏛️'
   return '👤'
 }
 
@@ -54,6 +64,16 @@ const getPersonaColor = (name: string): string => {
   if (lowerName.includes('jane')) return 'from-green-500 to-emerald-600'
   if (lowerName.includes('bill')) return 'from-cyan-500 to-blue-600'
   if (lowerName.includes('host')) return 'from-slate-500 to-slate-600'
+  // Niche personas
+  if (lowerName.includes('culture purist')) return 'from-teal-500 to-emerald-600'
+  if (lowerName.includes('bucket-list tourist')) return 'from-orange-400 to-amber-500'
+  if (lowerName.includes('value hacker')) return 'from-green-500 to-lime-600'
+  if (lowerName.includes('value bull')) return 'from-blue-500 to-cyan-600'
+  if (lowerName.includes('macro bear')) return 'from-red-500 to-rose-600'
+  if (lowerName.includes('technical analyst')) return 'from-violet-500 to-purple-600'
+  if (lowerName.includes('defense counsel')) return 'from-slate-600 to-blue-800'
+  if (lowerName.includes('aggressive prosecutor')) return 'from-red-600 to-orange-700'
+  if (lowerName.includes('neutral arbitrator')) return 'from-gray-500 to-slate-600'
   return 'from-gray-500 to-gray-600'
 }
 // </CHANGE>
@@ -61,19 +81,22 @@ const getPersonaColor = (name: string): string => {
 interface PersonaSelectorProps {
   selected: string[]
   onChange: (selected: string[]) => void
+  niche?: string
 }
 
 export default function PersonaSelector({
   selected,
   onChange,
+  niche,
 }: PersonaSelectorProps) {
   const { user, isLoaded: isUserLoaded } = useUser()
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [publicPersonas, setPublicPersonas] = useState<Persona[]>([])
   const [myPersonas, setMyPersonas] = useState<Persona[]>([])
+  const [nichePersonas, setNichePersonas] = useState<Persona[]>([])
   const [loading, setLoading] = useState(true)
-  
+
   // Human persona ID constant
   const HUMAN_PERSONA_ID = 'human'
   const isLoggedIn = isUserLoaded && !!user
@@ -81,17 +104,28 @@ export default function PersonaSelector({
   // Fetch personas from API
   useEffect(() => {
     fetchPersonas()
-  }, [searchQuery])
+  }, [searchQuery, niche])
+
+  // Auto-select niche personas when niche changes
+  useEffect(() => {
+    if (niche && nichePersonas.length > 0) {
+      const nicheIds = nichePersonas.map(p => p.id)
+      onChange(nicheIds)
+    }
+  }, [nichePersonas])
 
   const fetchPersonas = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`/api/personas?q=${encodeURIComponent(searchQuery)}`)
+      const params = new URLSearchParams({ q: searchQuery })
+      if (niche) params.set('niche', niche)
+      const response = await fetch(`/api/personas?${params}`)
       const data = await response.json()
-      
+
       if (response.ok) {
         setPublicPersonas(data.publicPersonas || [])
         setMyPersonas(data.myPersonas || [])
+        setNichePersonas(data.nichePersonas || [])
       }
     } catch (error) {
       console.error('[v0] Error fetching personas:', error)
@@ -310,8 +344,32 @@ export default function PersonaSelector({
         <div className="text-center py-8 text-muted-foreground">
           Loading personas...
         </div>
-      ) : (guestPersonas.length > 0 || hostPersonas.length > 0) ? (
+      ) : (guestPersonas.length > 0 || hostPersonas.length > 0 || nichePersonas.length > 0) ? (
         <div className="space-y-6">
+          {nichePersonas.length > 0 && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-semibold text-foreground capitalize">
+                    Suggested for {niche}
+                  </h3>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                    Specialized
+                  </span>
+                </div>
+                {renderPersonaGrid(nichePersonas)}
+              </div>
+              {hostPersonas.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-muted-foreground">🎙️ Add a host for topic synthesis</span>
+                  </div>
+                  {renderPersonaGrid(hostPersonas)}
+                </div>
+              )}
+            </div>
+          )}
+
           {guestPersonas.length > 0 && (
             <div className="space-y-2">
               <h3 className="text-sm font-semibold text-foreground">
@@ -321,7 +379,7 @@ export default function PersonaSelector({
             </div>
           )}
 
-          {hostPersonas.length > 0 && (
+          {hostPersonas.length > 0 && !niche && (
             <div className="space-y-2">
               <h3 className="text-sm font-semibold text-foreground">Host</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

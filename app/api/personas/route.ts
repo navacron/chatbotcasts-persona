@@ -10,13 +10,37 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url)
     const query = searchParams.get("q") || ""
+    const niche = searchParams.get("niche") || ""
 
-    // Fetch public personas
+    // Fetch niche-specific personas when requested
+    let nichePersonas: any[] = []
+    if (niche) {
+      const { data: nicheData, error: nicheError } = await supabase
+        .from("persona")
+        .select("*")
+        .eq("is_public", true)
+        .eq("niche", niche)
+        .order("created_at", { ascending: true })
+
+      if (nicheError) {
+        console.error("[v0] Error fetching niche personas:", nicheError)
+      } else {
+        nichePersonas = nicheData || []
+      }
+    }
+
+    // Fetch public personas. When a niche is selected, exclude niche personas
+    // here to avoid duplication with the nichePersonas section in the selector.
+    // Without a niche param (e.g. chat-conversation lookup), return all public personas.
     let publicQuery = supabase
       .from("persona")
       .select("*")
       .eq("is_public", true)
       .order("created_at", { ascending: false })
+
+    if (niche) {
+      publicQuery = publicQuery.is("niche", null)
+    }
 
     if (query) {
       publicQuery = publicQuery.or(`name.ilike.%${query}%,prompt.ilike.%${query}%`)
@@ -50,6 +74,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       publicPersonas: publicPersonas || [],
       myPersonas,
+      nichePersonas,
       isAuthenticated: !!userId,
     })
   } catch (error) {

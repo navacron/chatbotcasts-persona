@@ -4,7 +4,14 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import PersonaSelector from "./persona-selector"
-import { Sparkles } from "lucide-react"
+import { Sparkles, Plane, TrendingUp, Scale } from "lucide-react"
+
+const NICHES = [
+  { value: "", label: "General", icon: null },
+  { value: "travel", label: "Travel", icon: Plane },
+  { value: "finance", label: "Finance", icon: TrendingUp },
+  { value: "legal", label: "Legal", icon: Scale },
+] as const
 
 interface ConversationSetupProps {
   onStart: (data: any) => void
@@ -13,13 +20,21 @@ interface ConversationSetupProps {
 export default function ConversationSetup({ onStart }: ConversationSetupProps) {
   const [topic, setTopic] = useState("")
   const [selectedPersonas, setSelectedPersonas] = useState<string[]>([])
+  const [niche, setNiche] = useState("")
+
+  const handleNicheChange = (value: string) => {
+    setNiche(value)
+    // Clear persona selection when switching niches so auto-select can apply
+    setSelectedPersonas([])
+  }
 
   const handleStart = () => {
     if (topic.trim() && selectedPersonas.length >= 2) {
       onStart({
         topic,
         personas: selectedPersonas,
-        turnMode: "manual", // Always use manual mode
+        niche,
+        turnMode: "manual",
         turnCount: 1,
       })
     }
@@ -75,6 +90,28 @@ export default function ConversationSetup({ onStart }: ConversationSetupProps) {
             </div>
           </div>
 
+          {/* Niche Selector */}
+          <div className="space-y-3">
+            <label className="block text-sm font-semibold text-foreground">Conversation Niche</label>
+            <div className="flex gap-2 flex-wrap">
+              {NICHES.map(({ value, label, icon: Icon }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => handleNicheChange(value)}
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium border transition-colors ${
+                    niche === value
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-background text-muted-foreground border-border/50 hover:border-border hover:text-foreground"
+                  }`}
+                >
+                  {Icon && <Icon className="h-3.5 w-3.5" />}
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Persona Selection */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -83,7 +120,7 @@ export default function ConversationSetup({ onStart }: ConversationSetupProps) {
               </label>
               <span className="text-xs text-muted-foreground">Minimum 2 personas required</span>
             </div>
-            <PersonaSelector selected={selectedPersonas} onChange={setSelectedPersonas} />
+            <PersonaSelector selected={selectedPersonas} onChange={setSelectedPersonas} niche={niche} />
           </div>
 
           {/* Start Button */}
