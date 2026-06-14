@@ -1,8 +1,14 @@
 import { generateEmbedding } from "@/lib/embeddings"
 import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/service"
+import { synthesizeVerdicts } from "@/lib/verdicts"
+import { pickSchemaKey } from "@/lib/verdict-schemas"
 import { auth } from "@clerk/nextjs/server"
 import { type NextRequest, NextResponse } from "next/server"
+
+// Publishing now also synthesizes verdicts (a Perplexity LLM call) inline, on top of
+// the embedding call, so allow more headroom than the serverless default.
+export const maxDuration = 60
 
 async function resolveParentAndSlug(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -280,6 +286,54 @@ export async function POST(request: NextRequest) {
           await supabase.from("conversations").update({ embedding }).eq("id", conversation.id)
         } catch (_err) {
           // ignore embedding failure; backfill can retry
+        }
+      }
+    }
+
+    // Generate verdicts (skimmable insights) for public conversations.
+    // Skipped if the client already supplied data.verdicts (e.g. the publish UI's
+    // "Generate insights" button). Non-blocking: failures are acceptable — verdicts
+    // can be regenerated later from the post page via /api/generateVerdicts.
+    const convData = (data ?? {}) as {
+      messages?: Array<{ role?: string; content?: string }>
+      title?: string
+      plan?: unknown
+      verdicts?: unknown
+    }
+    if (isPublic && !convData.verdicts) {
+      const messages = convData.messages ?? []
+      if (messages.length > 0) {
+        try {
+          // Resolve category slug → verdict schema key
+          let categorySlug: string | null = null
+          const { data: category } = await supabase
+            .from("category")
+            .select("slug")
+            .eq("id", categoryId)
+            .maybeSingle()
+          categorySlug = (category as { slug?: string } | null)?.slug ?? null
+          const schemaKey = pickSchemaKey(categorySlug)
+
+          // plan may be stored as a string (API-direct flow) or an object { text } (UI flow)
+          const rawPlan = convData.plan
+          const plan =
+            typeof rawPlan === "string"
+              ? { text: rawPlan }
+              : ((rawPlan as { text?: string } | null) ?? null)
+
+          const verdicts = await synthesizeVerdicts({
+            title: title || convData.title || "",
+            messages,
+            schemaKey,
+            plan,
+          })
+
+          const updatedData = { ...convData, verdicts }
+          await supabase.from("conversations").update({ data: updatedData }).eq("id", conversation.id)
+          // Reflect verdicts in the response so callers don't see stale data
+          ;(conversation as { data?: unknown }).data = updatedData
+        } catch (err) {
+          console.error("[API] Verdict generation failed (non-blocking):", err)
         }
       }
     }

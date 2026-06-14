@@ -4,6 +4,9 @@ import { type NextRequest, NextResponse } from "next/server"
 import { synthesizeVerdicts } from "@/lib/verdicts"
 import { pickSchemaKey } from "@/lib/verdict-schemas"
 
+// Synthesizing verdicts is a Perplexity LLM call; allow more than the serverless default.
+export const maxDuration = 60
+
 async function resolveCategorySlug(
   supabase: ReturnType<typeof createServiceClient>,
   categoryId?: string | null,
