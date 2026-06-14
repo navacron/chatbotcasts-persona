@@ -4,10 +4,12 @@ import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { removeCitations } from "@/lib/markdown-utils"
 import { Input } from "@/components/ui/input"
-import { CheckCircle2, Loader2, LogIn, Sparkles } from "lucide-react"
+import { CheckCircle2, Loader2, LogIn, Sparkles, Lightbulb } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useUser, SignInButton, SignUpButton } from "@clerk/nextjs"
 import Image from "next/image"
+import InsightsPanel from "@/components/insights-panel"
+import type { Verdicts } from "@/lib/verdict-schemas"
 
 interface PublishConversationProps {
   conversationData: any
@@ -62,6 +64,10 @@ export default function PublishConversation({
   const [loadingCategories, setLoadingCategories] = useState(!editMode || !categoriesProp)
   const [featureImage, setFeatureImage] = useState<string | null>(existingFeatureImage || null)
   const [uploading, setUploading] = useState(false)
+  const [verdicts, setVerdicts] = useState<Verdicts | null>(
+    (chatData?.verdicts as Verdicts) ?? (conversationData?.data?.verdicts as Verdicts) ?? null,
+  )
+  const [isGeneratingInsights, setIsGeneratingInsights] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const { user, isLoaded } = useUser()
@@ -218,6 +224,44 @@ Guidelines:
     }
   }
 
+  const buildFormattedMessages = () =>
+    (chatData?.messages || []).map((msg: any, index: number) => ({
+      id: msg.id || index + 1,
+      role: msg.name,
+      content: msg.message,
+      personaId: msg.persona,
+      citations: msg.citations || [],
+      timestamp: msg.timestamp || new Date().toISOString(),
+    }))
+
+  const generateInsights = async () => {
+    if (!chatData?.messages || chatData.messages.length === 0) {
+      setError("No conversation to generate insights from")
+      return
+    }
+    setIsGeneratingInsights(true)
+    setError(null)
+    try {
+      const response = await fetch("/api/generateVerdicts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          messages: buildFormattedMessages(),
+          plan: chatData?.plan ? { text: chatData.plan.text } : null,
+          categoryId: selectedCategoryId || null,
+        }),
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error || "Failed to generate insights")
+      setVerdicts(result.verdicts as Verdicts)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to generate insights")
+    } finally {
+      setIsGeneratingInsights(false)
+    }
+  }
+
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files || !event.target.files[0]) return
 
@@ -297,14 +341,7 @@ Guidelines:
         }
       }
 
-      const formattedMessages = (chatData?.messages || []).map((msg: any, index: number) => ({
-        id: msg.id || index + 1,
-        role: msg.name,
-        content: msg.message,
-        personaId: msg.persona,
-        citations: msg.citations || [],
-        timestamp: msg.timestamp || new Date().toISOString(),
-      }))
+      const formattedMessages = buildFormattedMessages()
 
       const dataToSave = {
         title: title,
@@ -313,6 +350,8 @@ Guidelines:
         allPersonaIds: chatData?.personas || [],
         currentPersonaId: chatData?.personas?.[0] || null,
         messages: formattedMessages,
+        // Include generated insights if present (saved with the conversation)
+        ...(verdicts && { verdicts }),
         // Include plan data if present (for persistence across edit/extend)
         ...(chatData?.plan && {
           plan: {
@@ -622,6 +661,45 @@ Guidelines:
           <p className="text-xs text-muted-foreground">
             Leave empty and a summary may appear automatically in a few seconds, or click "Generate Summary" to generate now. You can also publish with an empty description to generate on publish.
           </p>
+        </div>
+
+        {/* Insights / Verdict */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-semibold text-foreground">
+              Insights <span className="text-muted-foreground font-normal">(Optional)</span>
+            </label>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={generateInsights}
+              disabled={isGeneratingInsights || !chatData?.messages || chatData.messages.length === 0}
+              className="h-8 bg-transparent"
+            >
+              {isGeneratingInsights ? (
+                <>
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Lightbulb className="h-3 w-3 mr-1" />
+                  {verdicts ? "Regenerate insights" : "Generate insights"}
+                </>
+              )}
+            </Button>
+          </div>
+          {verdicts ? (
+            <div className="border border-border rounded-lg p-4 bg-muted/20">
+              <InsightsPanel verdicts={verdicts} />
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Turn this conversation into a skimmable verdict — key decisions, a plan, and what to do next.
+              Saved with your post and used for search/answer-engine snippets.
+            </p>
+          )}
         </div>
 
         {/* Feature Image Upload */}

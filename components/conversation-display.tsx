@@ -1,11 +1,11 @@
 "use client"
 
-import React from "react"
+import React, { useState } from "react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Clock, Eye, User, MessageSquarePlus, ExternalLink, Pencil, ArrowRight } from "lucide-react"
+import { Clock, Eye, User, MessageSquarePlus, ExternalLink, Pencil, ArrowRight, Lightbulb, Loader2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import PlayAllControl from "@/components/play-all-control"
@@ -13,6 +13,8 @@ import Link from "next/link"
 import { useUser } from "@clerk/nextjs"
 import { extractUsernameFromEmail } from "@/lib/user-utils"
 import SectionNavigation from "@/components/section-navigation"
+import InsightsPanel from "@/components/insights-panel"
+import type { Verdicts } from "@/lib/verdict-schemas"
 
 interface Message {
   id: number
@@ -53,6 +55,7 @@ interface ConversationData {
     allPersonaIds?: string[]
     currentPersonaId?: string
     messages: Message[]
+    verdicts?: Verdicts
   }
   view_count: number
   created_at: string
@@ -98,6 +101,30 @@ export default function ConversationDisplay({
   const personaMap = new Map(personas.map((p) => [p.id, p]))
   const hasAudio = messages.some((msg) => msg.audio)
   const slug = conversation.slug ?? ""
+
+  const [verdicts, setVerdicts] = useState<Verdicts | null>(conversation.data?.verdicts ?? null)
+  const [generatingInsights, setGeneratingInsights] = useState(false)
+  const [insightsError, setInsightsError] = useState<string | null>(null)
+  const hasInsights = !!verdicts
+
+  const handleGenerateInsights = async () => {
+    setGeneratingInsights(true)
+    setInsightsError(null)
+    try {
+      const res = await fetch("/api/generateVerdicts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversationId: conversation.id }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || "Failed to generate insights")
+      setVerdicts(json.verdicts as Verdicts)
+    } catch (err) {
+      setInsightsError(err instanceof Error ? err.message : "Failed to generate insights")
+    } finally {
+      setGeneratingInsights(false)
+    }
+  }
 
   const getPersonaColor = (personaId: string) => {
     const persona = personaMap.get(personaId)
@@ -241,7 +268,7 @@ export default function ConversationDisplay({
       )}
 
       {/* Section Navigation */}
-      <SectionNavigation hasAudio={hasAudio} />
+      <SectionNavigation hasAudio={hasAudio} hasInsights={hasInsights} />
 
       {/* Summary Section */}
       <section id="summary" className="scroll-mt-24 mb-8">
@@ -296,6 +323,46 @@ export default function ConversationDisplay({
           </div>
         )}
       </section>
+
+      {/* Insights / Verdict Section */}
+      {(hasInsights || isOwner) && (
+        <section id="insights" className="scroll-mt-24 mb-8">
+          <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+            <h2 className="flex items-center gap-2 text-2xl font-semibold">
+              <Lightbulb className="h-6 w-6 text-primary" /> Insights
+            </h2>
+            {isOwner && (
+              <Button variant="outline" size="sm" onClick={handleGenerateInsights} disabled={generatingInsights}>
+                {generatingInsights ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Generating…
+                  </>
+                ) : (
+                  <>
+                    <Lightbulb className="h-4 w-4 mr-2" /> {hasInsights ? "Regenerate" : "Generate insights"}
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
+
+          {insightsError && (
+            <p className="text-sm text-destructive mb-4">{insightsError}</p>
+          )}
+
+          {hasInsights ? (
+            <InsightsPanel verdicts={verdicts!} />
+          ) : (
+            <Card className="p-8 text-center bg-muted/30 border-dashed">
+              <p className="text-muted-foreground">
+                {generatingInsights
+                  ? "Distilling this conversation into a decision you can act on…"
+                  : "Turn this conversation into a skimmable verdict — the key decisions, a plan, and what to do next."}
+              </p>
+            </Card>
+          )}
+        </section>
+      )}
 
       {/* Audio Section */}
       {hasAudio && (

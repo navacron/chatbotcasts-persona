@@ -4,6 +4,8 @@ import ConversationDisplay from "@/components/conversation-display"
 import { getConversationBySlug } from "@/lib/conversations"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
+import { buildFaqJsonLd } from "@/lib/verdict-jsonld"
+import type { Verdicts } from "@/lib/verdict-schemas"
 
 // Enable Incremental Static Regeneration - cache for 1 hour
 export const revalidate = 3600
@@ -23,8 +25,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 
   const conversation = data.conversation
+  // Prefer the verdict bottom_line (a crisp, answer-style snippet) when present.
+  const verdicts = (conversation as { data?: { verdicts?: Verdicts } }).data?.verdicts
+  const bottomLine =
+    typeof verdicts?.rollup?.bottom_line === "string" ? verdicts.rollup.bottom_line : ""
   const description =
-    conversation.description?.replace(/<[^>]*>/g, "").substring(0, 160) || "An AI-powered conversation"
+    (bottomLine || conversation.description?.replace(/<[^>]*>/g, "") || "An AI-powered conversation").substring(0, 160)
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.chatbotcasts.com"
   const pageUrl = `${siteUrl}/posts/${conversation.slug}`
 
@@ -95,8 +101,17 @@ export default async function PostPage({ params }: PageProps) {
     notFound()
   }
 
+  const verdicts = (data.conversation as { data?: { verdicts?: Verdicts } }).data?.verdicts
+  const faqJsonLd = buildFaqJsonLd(verdicts)
+
   return (
     <div className="min-h-screen bg-white flex flex-col">
+      {faqJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+        />
+      )}
       <Header />
       <div className="flex-1">
         <ConversationDisplay

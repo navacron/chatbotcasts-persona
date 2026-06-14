@@ -62,6 +62,8 @@ def load_prompt_config(version: str, prompts_dir: Optional[Path] = None) -> Prom
         output_instruction=data["output_instruction"],
         novelty_rule=data.get("novelty_rule"),
         voice_rules=data.get("voice_rules"),
+        opening_instruction_first_turn=data.get("opening_instruction_first_turn"),
+        opening_instruction_continuation=data.get("opening_instruction_continuation"),
         include_subtopic_prefix=data.get("include_subtopic_prefix", True),
         include_conversation_history=data.get("include_conversation_history", True),
     )
@@ -135,6 +137,7 @@ def generate_turn(
     config: PromptConfig,
     api_key: str,
     focused_subtopic: Optional[str] = None,
+    is_first_turn_on_subtopic: bool = False,
 ) -> Message:
     """
     Generates a single conversation turn for the given persona.
@@ -147,6 +150,7 @@ def generate_turn(
         title=title,
         messages=messages,
         focused_subtopic=focused_subtopic,
+        is_first_turn_on_subtopic=is_first_turn_on_subtopic,
     )
 
     raw_text, _citations = call_perplexity(
@@ -214,8 +218,10 @@ def generate_full_conversation(
     total_turns = len(subtopics) * len(personas) * turns_per_subtopic
     with tqdm(total=total_turns, desc=f"Generating [{config.version}] {plan['id']}") as pbar:
         for subtopic in subtopics:
+            turns_on_this_subtopic = 0
             for _round in range(turns_per_subtopic):
                 for persona in personas:
+                    is_first = turns_on_this_subtopic == 0
                     msg = generate_turn(
                         persona=persona,
                         messages=messages,
@@ -223,8 +229,10 @@ def generate_full_conversation(
                         config=config,
                         api_key=api_key,
                         focused_subtopic=subtopic,
+                        is_first_turn_on_subtopic=is_first,
                     )
                     messages.append(msg)
+                    turns_on_this_subtopic += 1
                     pbar.update(1)
                     if delay_between_calls > 0:
                         time.sleep(delay_between_calls)

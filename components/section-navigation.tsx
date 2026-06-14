@@ -1,27 +1,33 @@
 'use client'
 
-import { FileText, MessageSquare, Headphones } from 'lucide-react'
+import { FileText, MessageSquare, Headphones, Lightbulb } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 interface SectionNavigationProps {
   hasAudio: boolean
+  hasInsights?: boolean
 }
 
 interface Section {
   id: string
   label: string
   icon: React.ComponentType<{ className?: string }>
-  conditional?: boolean
+  conditional?: 'audio' | 'insights'
 }
 
 const sections: Section[] = [
   { id: 'summary', label: 'Summary', icon: FileText },
+  { id: 'insights', label: 'Insights', icon: Lightbulb, conditional: 'insights' },
   { id: 'conversation', label: 'Conversation', icon: MessageSquare },
-  { id: 'audio', label: 'Audio', icon: Headphones, conditional: true },
+  { id: 'audio', label: 'Audio', icon: Headphones, conditional: 'audio' },
 ]
 
-export default function SectionNavigation({ hasAudio }: SectionNavigationProps) {
-  const visibleSections = sections.filter((section) => !section.conditional || hasAudio)
+export default function SectionNavigation({ hasAudio, hasInsights = false }: SectionNavigationProps) {
+  const visibleSections = sections.filter((section) => {
+    if (section.conditional === 'audio') return hasAudio
+    if (section.conditional === 'insights') return hasInsights
+    return true
+  })
 
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>, sectionId: string) => {
     e.preventDefault()

@@ -72,6 +72,25 @@ test_plans:
       - "7. What travel actually teaches you vs. what people claim it teaches"
       - "8. Where to go right now and what to skip in 2025"
 
+  - id: "france-10-day-trip"
+    title: "Plan a 10 Day Trip to France"
+    description: "A solo traveler with a $3,000 budget plans a 10-day France trip for the first time."
+    persona_ids:
+      - "064759a8-1beb-4273-a952-4eab1da45cb7"   # Culture Purist
+      - "18d78133-b49f-4e48-9ea7-87f2c1ef68db"   # Bucket-List Tourist
+      - "bd9e881c-dd06-45c8-90b7-e77ab9f28eb3"   # Value Hacker
+    turns_per_subtopic: 2
+    reference_youtube_url: null
+    plan:
+      - "1. Where to actually go: Paris only vs. multi-city on a $3,000 first trip"
+      - "2. Route clash: Slow immersion vs. bucket-list efficiency on a 10-day timeline"
+      - "3. Transport math: TGV vs. OUIGO vs. regional rail on a $3,000 solo budget"
+      - "4. Where to stay: Paris arrondissement choice and hotel vs. apartment trade-offs"
+      - "5. Food budget reality: brasserie, market, and tourist-trap pricing for first-timers"
+      - "6. The iconic must-dos: Eiffel Tower, Louvre, Versailles — worth it or overrated"
+      - "7. Key takeaways and what a first-timer should lock in before they land"
+      - "8. Closing: is 10 days enough, or does France deserve a follow-up trip"
+
   - id: "climate-tech-reality"
     title: "Climate Tech: Breakthrough or Hype Cycle?"
     description: "Separating genuine climate solutions from over-funded promises."

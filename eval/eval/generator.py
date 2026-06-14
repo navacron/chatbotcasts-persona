@@ -37,6 +37,8 @@ class PromptConfig:
     description: str = ""
     novelty_rule: Optional[str] = None
     voice_rules: Optional[str] = None
+    opening_instruction_first_turn: Optional[str] = None
+    opening_instruction_continuation: Optional[str] = None
     include_subtopic_prefix: bool = True
     include_conversation_history: bool = True
 
@@ -66,10 +68,12 @@ def build_user_prompt(
     title: str,
     messages: list[Message],
     focused_subtopic: Optional[str] = None,
+    is_first_turn_on_subtopic: bool = False,
 ) -> str:
     """
     Assembles the full user prompt exactly as the TypeScript route does:
     1. Optional subtopic prefix
+    1b. Optional opening instruction (v9+: first-turn vs continuation)
     2. Guidelines section
     3. Formatting section
     4. Optional novelty rule (v2+)
@@ -81,6 +85,13 @@ def build_user_prompt(
     # 1. Optional subtopic prefix
     if config.include_subtopic_prefix and focused_subtopic:
         parts.append(f"Currently discussing: {focused_subtopic}\n")
+
+    # 1b. Opening instruction (v9+)
+    if config.opening_instruction_first_turn and config.opening_instruction_continuation:
+        if is_first_turn_on_subtopic or not messages:
+            parts.append(config.opening_instruction_first_turn.rstrip())
+        else:
+            parts.append(config.opening_instruction_continuation.rstrip())
 
     # 2. Guidelines
     parts.append(f"Guidelines:\n{config.guidelines.rstrip()}")
