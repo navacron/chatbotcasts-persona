@@ -1,9 +1,9 @@
 "use client"
 
-import React from "react"
+import React, { useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Lightbulb, CheckCircle2, CalendarDays, Wallet, ListChecks, HelpCircle } from "lucide-react"
+import { Lightbulb, CheckCircle2, CalendarDays, Wallet, ListChecks, HelpCircle, ChevronDown, ChevronRight } from "lucide-react"
 import type { Verdicts, VerdictCard } from "@/lib/verdict-schemas"
 
 function confidenceColor(confidence?: string): string {
@@ -247,36 +247,66 @@ const HIDDEN_CARD_KEYS = new Set([
 ])
 
 function VerdictCardView({ card }: { card: VerdictCard }) {
+  const [open, setOpen] = useState(false)
   const extras = Object.keys(card).filter((k) => !HIDDEN_CARD_KEYS.has(k))
+
+  const hasWhy = !!card.why
+  const hasQuote = !!(card.quote && String(card.quote).trim())
+  const hasDissent = !!(card.dissent && String(card.dissent).toLowerCase() !== "none")
+  const hasDetail = hasWhy || hasQuote || hasDissent || extras.length > 0
+
   return (
     <Card className="p-4 bg-muted/30 border-0 shadow-none">
-      {card.subtopic && <div className="text-xs font-semibold text-muted-foreground mb-2">{card.subtopic}</div>}
+      {card.subtopic && (
+        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">{card.subtopic}</div>
+      )}
       {card.question && <p className="text-sm text-muted-foreground mb-2">{card.question}</p>}
+
+      {/* The call: large visual anchor */}
       {card.the_call && (
-        <p className="text-base font-semibold mb-1">
-          {card.the_call}
+        <div className="flex items-start justify-between gap-3">
+          <p className="text-lg font-semibold leading-snug">{card.the_call}</p>
           {card.confidence && (
-            <Badge className={`ml-2 align-middle ${confidenceColor(card.confidence)}`} variant="secondary">
+            <Badge className={`shrink-0 ${confidenceColor(card.confidence)}`} variant="secondary">
               {String(card.confidence)}
             </Badge>
           )}
-        </p>
+        </div>
       )}
-      {card.why && <p className="text-sm mb-1"><span className="font-medium">Why:</span> {card.why}</p>}
-      {card.quote && String(card.quote).trim() && (
-        <blockquote className="mt-2 mb-1 border-l-2 border-primary/40 pl-3 text-sm italic text-muted-foreground">
-          “{String(card.quote).replace(/^["“”]+|["“”]+$/g, "")}”
-          {card.speaker && String(card.speaker).trim() && (
-            <span className="not-italic font-medium"> — {card.speaker}</span>
+
+      {hasDetail && (
+        <>
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+            aria-expanded={open}
+          >
+            {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+            {open ? "Hide reasoning" : "Show reasoning"}
+          </button>
+
+          {open && (
+            <div className="mt-3 space-y-1">
+              {hasWhy && <p className="text-sm"><span className="font-medium">Why:</span> {card.why}</p>}
+              {hasQuote && (
+                <blockquote className="border-l-2 border-primary/40 pl-3 text-sm italic text-muted-foreground">
+                  “{String(card.quote).replace(/^["“”]+|["“”]+$/g, "")}”
+                  {card.speaker && String(card.speaker).trim() && (
+                    <span className="not-italic font-medium"> — {card.speaker}</span>
+                  )}
+                </blockquote>
+              )}
+              {hasDissent && (
+                <p className="text-sm text-muted-foreground"><span className="font-medium">Dissent:</span> {card.dissent}</p>
+              )}
+              {extras.map((k) => (
+                <p key={k} className="text-sm"><span className="font-medium">{titleize(k)}:</span> {String(card[k])}</p>
+              ))}
+            </div>
           )}
-        </blockquote>
+        </>
       )}
-      {card.dissent && String(card.dissent).toLowerCase() !== "none" && (
-        <p className="text-sm text-muted-foreground"><span className="font-medium">Dissent:</span> {card.dissent}</p>
-      )}
-      {extras.map((k) => (
-        <p key={k} className="text-sm"><span className="font-medium">{titleize(k)}:</span> {String(card[k])}</p>
-      ))}
     </Card>
   )
 }

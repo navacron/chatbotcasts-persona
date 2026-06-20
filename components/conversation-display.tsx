@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Clock, Eye, User, MessageSquarePlus, ExternalLink, Pencil, ArrowRight, Lightbulb, Loader2 } from "lucide-react"
+import { Clock, MessageSquarePlus, ExternalLink, Pencil, ArrowRight, Lightbulb, Loader2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import PlayAllControl from "@/components/play-all-control"
@@ -272,10 +272,8 @@ export default function ConversationDisplay({
 
       {/* Summary Section */}
       <section id="summary" className="scroll-mt-24 mb-8">
-        <h1 className="text-4xl font-bold mb-4 text-balance">{conversation.title}</h1>
-
         {category && (
-          <div className="mb-4">
+          <div className="mb-3">
             <Link
               href={`/category/${category.slug}`}
               className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
@@ -286,6 +284,42 @@ export default function ConversationDisplay({
             </Link>
           </div>
         )}
+
+        <h1 className="text-3xl md:text-4xl font-bold mb-4 text-balance">{conversation.title}</h1>
+
+        {/* Editorial cast row */}
+        {personas.length > 0 && (
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-3 mb-3">
+            {personas.map((persona, idx) => (
+              <React.Fragment key={persona.id}>
+                {idx > 0 && (
+                  <span className="text-sm font-medium text-muted-foreground/60 italic">vs</span>
+                )}
+                <div className="flex items-center gap-2">
+                  <Avatar className="h-9 w-9 shrink-0">
+                    <AvatarFallback className={getPersonaColor(persona.id)}>
+                      {getPersonaInitials(persona.id, persona.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="font-semibold text-base">{persona.name}</span>
+                </div>
+              </React.Fragment>
+            ))}
+          </div>
+        )}
+
+        {/* Compact byline */}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground mb-6">
+          <span>{extractUsernameFromEmail(user?.email || clerkUser?.primaryEmailAddress?.emailAddress)}</span>
+          <span className="text-muted-foreground/50">·</span>
+          <span>{formatDate(conversation.created_at)}</span>
+          {(conversation.view_count || 0) >= 50 && (
+            <>
+              <span className="text-muted-foreground/50">·</span>
+              <span>{conversation.view_count} views</span>
+            </>
+          )}
+        </div>
 
         {conversation.feature_image && (
           <div className="mb-6 rounded-lg overflow-hidden">
@@ -309,19 +343,6 @@ export default function ConversationDisplay({
           </div>
         )}
 
-        {youtubeVideoId && (
-          <div className="mb-8">
-            <div className="relative w-full rounded-lg overflow-hidden" style={{ paddingBottom: "56.25%" }}>
-              <iframe
-                className="absolute top-0 left-0 w-full h-full"
-                src={`https://www.youtube.com/embed/${youtubeVideoId}`}
-                title="YouTube video player"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            </div>
-          </div>
-        )}
       </section>
 
       {/* Insights / Verdict Section */}
@@ -372,30 +393,34 @@ export default function ConversationDisplay({
         </section>
       )}
 
+      {/* YouTube embed (demoted from the summary) */}
+      {youtubeVideoId && (
+        <div className="mb-8">
+          <div className="relative w-full rounded-lg overflow-hidden" style={{ paddingBottom: "56.25%" }}>
+            <iframe
+              className="absolute top-0 left-0 w-full h-full"
+              src={`https://www.youtube.com/embed/${youtubeVideoId}`}
+              title="YouTube video player"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+        </div>
+      )}
+
       {/* Conversation Section */}
       <section id="conversation" className="scroll-mt-24">
         <h2 className="text-2xl font-semibold mb-6">Conversation</h2>
 
         {/* Meta information */}
-        <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mb-6">
-          <div className="flex items-center gap-2">
-            <User className="h-4 w-4" />
-            <span>{extractUsernameFromEmail(user?.email || clerkUser?.primaryEmailAddress?.emailAddress)}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4" />
-            <span>{formatDate(conversation.created_at)}</span>
-          </div>
-          {showLastUpdated && (
+        {showLastUpdated && (
+          <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mb-6">
             <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4" />
               <span>Last updated {formatDate(conversation.updated_at)}</span>
             </div>
-          )}
-          <div className="flex items-center gap-2">
-            <Eye className="h-4 w-4" />
-            <span>{conversation.view_count || 0} views</span>
           </div>
-        </div>
+        )}
 
         {/* Participants */}
         <div className="mb-8">
@@ -502,6 +527,21 @@ export default function ConversationDisplay({
           </Card>
         )}
       </section>
+
+      {/* Related: more in this category */}
+      {category && (
+        <Link href={`/category/${category.slug}`} className="block mt-12 group">
+          <Card className="p-6 flex items-center justify-between gap-4 bg-muted/30 transition-colors group-hover:bg-muted/50">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                Keep exploring
+              </p>
+              <p className="text-lg font-semibold">More in {category.name}</p>
+            </div>
+            <ArrowRight className="h-5 w-5 shrink-0 text-primary transition-transform group-hover:translate-x-1" />
+          </Card>
+        </Link>
+      )}
     </div>
   )
 }
