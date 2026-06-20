@@ -345,6 +345,14 @@ export default function ConversationDisplay({
 
       </section>
 
+      {/* Audio Section — placed right after the summary so listeners can start immediately */}
+      {hasAudio && (
+        <section id="audio" className="scroll-mt-24 mb-8">
+          <h2 className="text-2xl font-semibold mb-4">Listen to Conversation</h2>
+          <PlayAllControl messages={messages} />
+        </section>
+      )}
+
       {/* Insights / Verdict Section */}
       {(hasInsights || isOwner) && (
         <section id="insights" className="scroll-mt-24 mb-8">
@@ -382,14 +390,6 @@ export default function ConversationDisplay({
               </p>
             </Card>
           )}
-        </section>
-      )}
-
-      {/* Audio Section */}
-      {hasAudio && (
-        <section id="audio" className="scroll-mt-24 mb-8">
-          <h2 className="text-2xl font-semibold mb-4">Listen to Conversation</h2>
-          <PlayAllControl messages={messages} />
         </section>
       )}
 
