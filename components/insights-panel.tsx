@@ -255,59 +255,59 @@ function VerdictCardView({ card }: { card: VerdictCard }) {
   const hasDissent = !!(card.dissent && String(card.dissent).toLowerCase() !== "none")
   const hasDetail = hasWhy || hasQuote || hasDissent || extras.length > 0
 
-  return (
-    <Card className="p-4 bg-muted/30 border-0 shadow-none">
-      {card.subtopic && (
-        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">{card.subtopic}</div>
-      )}
-      {card.question && <p className="text-sm text-muted-foreground mb-2">{card.question}</p>}
+  // Lead with the question; fall back to the subtopic if there's no question.
+  const heading = card.question || card.subtopic
 
-      {/* The call: large visual anchor */}
-      {card.the_call && (
-        <div className="flex items-start justify-between gap-3">
-          <p className="text-lg font-semibold leading-snug">{card.the_call}</p>
+  return (
+    <div className="px-4 py-3">
+      {/* Header row doubles as the expand/collapse toggle when there's detail. */}
+      <button
+        type="button"
+        onClick={hasDetail ? () => setOpen((v) => !v) : undefined}
+        aria-expanded={hasDetail ? open : undefined}
+        className={`flex w-full items-start justify-between gap-3 text-left ${
+          hasDetail ? "cursor-pointer group" : "cursor-default"
+        }`}
+      >
+        {heading && <span className="font-medium leading-snug">{heading}</span>}
+        <span className="flex shrink-0 items-center gap-1.5">
           {card.confidence && (
-            <Badge className={`shrink-0 ${confidenceColor(card.confidence)}`} variant="secondary">
+            <Badge className={confidenceColor(card.confidence)} variant="secondary">
               {String(card.confidence)}
             </Badge>
           )}
+          {hasDetail &&
+            (open ? (
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <ChevronRight className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-foreground" />
+            ))}
+        </span>
+      </button>
+
+      {/* Answer line directly below the question. */}
+      {card.the_call && <p className="mt-0.5 text-sm text-muted-foreground">{card.the_call}</p>}
+
+      {hasDetail && open && (
+        <div className="mt-3 space-y-1">
+          {hasWhy && <p className="text-sm"><span className="font-medium">Why:</span> {card.why}</p>}
+          {hasQuote && (
+            <blockquote className="border-l-2 border-primary/40 pl-3 text-sm italic text-muted-foreground">
+              “{String(card.quote).replace(/^["“”]+|["“”]+$/g, "")}”
+              {card.speaker && String(card.speaker).trim() && (
+                <span className="not-italic font-medium"> — {card.speaker}</span>
+              )}
+            </blockquote>
+          )}
+          {hasDissent && (
+            <p className="text-sm text-muted-foreground"><span className="font-medium">Dissent:</span> {card.dissent}</p>
+          )}
+          {extras.map((k) => (
+            <p key={k} className="text-sm"><span className="font-medium">{titleize(k)}:</span> {String(card[k])}</p>
+          ))}
         </div>
       )}
-
-      {hasDetail && (
-        <>
-          <button
-            type="button"
-            onClick={() => setOpen((v) => !v)}
-            className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-            aria-expanded={open}
-          >
-            {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-            {open ? "Hide reasoning" : "Show reasoning"}
-          </button>
-
-          {open && (
-            <div className="mt-3 space-y-1">
-              {hasWhy && <p className="text-sm"><span className="font-medium">Why:</span> {card.why}</p>}
-              {hasQuote && (
-                <blockquote className="border-l-2 border-primary/40 pl-3 text-sm italic text-muted-foreground">
-                  “{String(card.quote).replace(/^["“”]+|["“”]+$/g, "")}”
-                  {card.speaker && String(card.speaker).trim() && (
-                    <span className="not-italic font-medium"> — {card.speaker}</span>
-                  )}
-                </blockquote>
-              )}
-              {hasDissent && (
-                <p className="text-sm text-muted-foreground"><span className="font-medium">Dissent:</span> {card.dissent}</p>
-              )}
-              {extras.map((k) => (
-                <p key={k} className="text-sm"><span className="font-medium">{titleize(k)}:</span> {String(card[k])}</p>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-    </Card>
+    </div>
   )
 }
 
@@ -329,7 +329,7 @@ export default function InsightsPanel({ verdicts }: { verdicts: Verdicts }) {
       {cards.length > 0 && (
         <div>
           <h4 className="text-sm font-semibold text-muted-foreground mb-3">Verdict by topic</h4>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="divide-y rounded-lg border">
             {cards.map((card, i) => (
               <VerdictCardView key={i} card={card} />
             ))}
