@@ -28,6 +28,43 @@ function titleize(key: string): string {
   return key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
+/** A labeled section whose body collapses behind its header. Collapsed by default. */
+function CollapsibleSection({
+  icon: Icon,
+  title,
+  count,
+  children,
+}: {
+  icon?: React.ComponentType<{ className?: string }>
+  title: string
+  count?: number
+  children: React.ReactNode
+}) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="group flex w-full items-center gap-2 text-sm font-semibold text-left"
+      >
+        {open ? (
+          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground" />
+        )}
+        {Icon && <Icon className="h-4 w-4 shrink-0" />}
+        <span>{title}</span>
+        {typeof count === "number" && count > 0 && (
+          <span className="text-xs font-normal text-muted-foreground">({count})</span>
+        )}
+      </button>
+      {open && <div className="mt-2">{children}</div>}
+    </div>
+  )
+}
+
 /* ----------------------------- Rollup renderers ---------------------------- */
 
 function TripPlanRollup({ rollup }: { rollup: Record<string, unknown> }) {
@@ -47,69 +84,62 @@ function TripPlanRollup({ rollup }: { rollup: Record<string, unknown> }) {
   const bookNow = asArray<{ item?: string; when?: string }>(rollup.book_now)
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {typeof rollup.bottom_line === "string" && (
         <p className="text-lg leading-relaxed font-medium">{rollup.bottom_line}</p>
       )}
 
-      {budget.length > 0 && (
-        <div>
-          <h4 className="flex items-center gap-2 text-sm font-semibold mb-2">
-            <Wallet className="h-4 w-4" /> Budget
-          </h4>
-          <div className="rounded-lg border overflow-hidden">
-            <table className="w-full text-sm">
-              <tbody>
-                {budget.map((row, i) => (
-                  <tr key={i} className="border-b last:border-0">
-                    <td className="px-4 py-2">{row.label}</td>
-                    <td className="px-4 py-2 text-right tabular-nums">{String(row.amount ?? "")}</td>
-                  </tr>
-                ))}
-                {showTotal && (
-                  <tr className="bg-muted/40 font-semibold">
-                    <td className="px-4 py-2">Total</td>
-                    <td className="px-4 py-2 text-right tabular-nums">{total.toLocaleString()}</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      <div className="space-y-2">
+        {budget.length > 0 && (
+          <CollapsibleSection icon={Wallet} title="Budget" count={budget.length}>
+            <div className="rounded-lg border overflow-hidden">
+              <table className="w-full text-sm">
+                <tbody>
+                  {budget.map((row, i) => (
+                    <tr key={i} className="border-b last:border-0">
+                      <td className="px-4 py-2">{row.label}</td>
+                      <td className="px-4 py-2 text-right tabular-nums">{String(row.amount ?? "")}</td>
+                    </tr>
+                  ))}
+                  {showTotal && (
+                    <tr className="bg-muted/40 font-semibold">
+                      <td className="px-4 py-2">Total</td>
+                      <td className="px-4 py-2 text-right tabular-nums">{total.toLocaleString()}</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CollapsibleSection>
+        )}
 
-      {dayPlan.length > 0 && (
-        <div>
-          <h4 className="flex items-center gap-2 text-sm font-semibold mb-2">
-            <CalendarDays className="h-4 w-4" /> Day plan
-          </h4>
-          <ul className="space-y-1.5">
-            {dayPlan.map((row, i) => (
-              <li key={i} className="text-sm">
-                <span className="font-medium">{row.days}:</span> {row.what}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+        {dayPlan.length > 0 && (
+          <CollapsibleSection icon={CalendarDays} title="Day plan" count={dayPlan.length}>
+            <ul className="space-y-1.5">
+              {dayPlan.map((row, i) => (
+                <li key={i} className="text-sm">
+                  <span className="font-medium">{row.days}:</span> {row.what}
+                </li>
+              ))}
+            </ul>
+          </CollapsibleSection>
+        )}
 
-      {bookNow.length > 0 && (
-        <div>
-          <h4 className="flex items-center gap-2 text-sm font-semibold mb-2">
-            <ListChecks className="h-4 w-4" /> Book now
-          </h4>
-          <ul className="space-y-1.5">
-            {bookNow.map((row, i) => (
-              <li key={i} className="text-sm flex gap-2">
-                <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
-                <span>
-                  {row.item} {row.when && <em className="text-muted-foreground">— {row.when}</em>}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+        {bookNow.length > 0 && (
+          <CollapsibleSection icon={ListChecks} title="Book now" count={bookNow.length}>
+            <ul className="space-y-1.5">
+              {bookNow.map((row, i) => (
+                <li key={i} className="text-sm flex gap-2">
+                  <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
+                  <span>
+                    {row.item} {row.when && <em className="text-muted-foreground">— {row.when}</em>}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </CollapsibleSection>
+        )}
+      </div>
     </div>
   )
 }
@@ -125,40 +155,7 @@ function ComparisonRollup({ rollup }: { rollup: Record<string, unknown> }) {
   const bestFor = asArray<{ use_case?: string; item?: string }>(rollup.best_for_map)
 
   return (
-    <div className="space-y-6">
-      {items.length > 0 && criteria.length > 0 && (
-        <div className="overflow-x-auto rounded-lg border">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-muted/40">
-                <th className="px-3 py-2 text-left"></th>
-                {criteria.map((cr) => (
-                  <th key={cr} className="px-3 py-2 text-left font-semibold">{cr}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((it) => (
-                <tr key={it} className="border-t">
-                  <td className="px-3 py-2 font-medium">{it}</td>
-                  {criteria.map((cr) => (
-                    <td key={cr} className="px-3 py-2">{grid.get(`${it}|||${cr}`) || "—"}</td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {prosCons.map((pc, i) => (
-        <div key={i}>
-          <h4 className="text-sm font-semibold mb-1">{pc.item}</h4>
-          <p className="text-sm"><span className="text-green-600 font-medium">Pros:</span> {asArray<string>(pc.pros).join("; ") || String(pc.pros ?? "")}</p>
-          <p className="text-sm"><span className="text-rose-600 font-medium">Cons:</span> {asArray<string>(pc.cons).join("; ") || String(pc.cons ?? "")}</p>
-        </div>
-      ))}
-
+    <div className="space-y-4">
       {pick && (
         <div className="rounded-lg bg-primary/5 border border-primary/20 p-4">
           <h4 className="text-sm font-semibold mb-1">Overall pick</h4>
@@ -168,16 +165,58 @@ function ComparisonRollup({ rollup }: { rollup: Record<string, unknown> }) {
         </div>
       )}
 
-      {bestFor.length > 0 && (
-        <div>
-          <h4 className="text-sm font-semibold mb-2">Best for</h4>
-          <ul className="space-y-1.5">
-            {bestFor.map((row, i) => (
-              <li key={i} className="text-sm">{row.use_case} → <span className="font-medium">{row.item}</span></li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <div className="space-y-2">
+        {items.length > 0 && criteria.length > 0 && (
+          <CollapsibleSection title="Comparison" count={items.length}>
+            <div className="overflow-x-auto rounded-lg border">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-muted/40">
+                    <th className="px-3 py-2 text-left"></th>
+                    {criteria.map((cr) => (
+                      <th key={cr} className="px-3 py-2 text-left font-semibold">{cr}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((it) => (
+                    <tr key={it} className="border-t">
+                      <td className="px-3 py-2 font-medium">{it}</td>
+                      {criteria.map((cr) => (
+                        <td key={cr} className="px-3 py-2">{grid.get(`${it}|||${cr}`) || "—"}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CollapsibleSection>
+        )}
+
+        {prosCons.length > 0 && (
+          <CollapsibleSection title="Pros & cons" count={prosCons.length}>
+            <div className="space-y-3">
+              {prosCons.map((pc, i) => (
+                <div key={i}>
+                  <h4 className="text-sm font-semibold mb-1">{pc.item}</h4>
+                  <p className="text-sm"><span className="text-green-600 font-medium">Pros:</span> {asArray<string>(pc.pros).join("; ") || String(pc.pros ?? "")}</p>
+                  <p className="text-sm"><span className="text-rose-600 font-medium">Cons:</span> {asArray<string>(pc.cons).join("; ") || String(pc.cons ?? "")}</p>
+                </div>
+              ))}
+            </div>
+          </CollapsibleSection>
+        )}
+
+        {bestFor.length > 0 && (
+          <CollapsibleSection title="Best for" count={bestFor.length}>
+            <ul className="space-y-1.5">
+              {bestFor.map((row, i) => (
+                <li key={i} className="text-sm">{row.use_case} → <span className="font-medium">{row.item}</span></li>
+              ))}
+            </ul>
+          </CollapsibleSection>
+        )}
+      </div>
     </div>
   )
 }
@@ -186,37 +225,33 @@ function KeyPointsRollup({ rollup }: { rollup: Record<string, unknown> }) {
   const takeaways = asArray<string>(rollup.key_takeaways).map(String)
   const open = asArray<string>(rollup.open_questions).map(String)
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {typeof rollup.bottom_line === "string" && (
         <p className="text-lg leading-relaxed font-medium">{rollup.bottom_line}</p>
       )}
-      {takeaways.length > 0 && (
-        <div>
-          <h4 className="flex items-center gap-2 text-sm font-semibold mb-2">
-            <ListChecks className="h-4 w-4" /> Key takeaways
-          </h4>
-          <ul className="space-y-1.5">
-            {takeaways.map((t, i) => (
-              <li key={i} className="text-sm flex gap-2">
-                <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
-                <span>{t}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      {open.length > 0 && (
-        <div>
-          <h4 className="flex items-center gap-2 text-sm font-semibold mb-2">
-            <HelpCircle className="h-4 w-4" /> Open questions
-          </h4>
-          <ul className="space-y-1.5">
-            {open.map((q, i) => (
-              <li key={i} className="text-sm text-muted-foreground">{q}</li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <div className="space-y-2">
+        {takeaways.length > 0 && (
+          <CollapsibleSection icon={ListChecks} title="Key takeaways" count={takeaways.length}>
+            <ul className="space-y-1.5">
+              {takeaways.map((t, i) => (
+                <li key={i} className="text-sm flex gap-2">
+                  <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
+                  <span>{t}</span>
+                </li>
+              ))}
+            </ul>
+          </CollapsibleSection>
+        )}
+        {open.length > 0 && (
+          <CollapsibleSection icon={HelpCircle} title="Open questions" count={open.length}>
+            <ul className="space-y-1.5">
+              {open.map((q, i) => (
+                <li key={i} className="text-sm text-muted-foreground">{q}</li>
+              ))}
+            </ul>
+          </CollapsibleSection>
+        )}
+      </div>
     </div>
   )
 }
